@@ -29,10 +29,7 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .login-header {
-            text-align: center;
-            margin-bottom: 32px;
-        }
+        .login-header { text-align: center; margin-bottom: 32px; }
         .login-header h1 {
             font-size: 1.75rem;
             color: #1a1a2e;
@@ -42,10 +39,7 @@
             justify-content: center;
             gap: 10px;
         }
-        .login-header p {
-            color: #6b7280;
-            font-size: 0.95rem;
-        }
+        .login-header p { color: #6b7280; font-size: 0.95rem; }
         .profile-selector {
             display: flex;
             gap: 12px;
@@ -75,9 +69,7 @@
             color: #667eea;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .form-group {
-            margin-bottom: 20px;
-        }
+        .form-group { margin-bottom: 20px; }
         .form-group label {
             display: block;
             margin-bottom: 6px;
@@ -206,7 +198,7 @@
                 showAlert("Acesso autorizado! Redirecionando...", "success");
                 localStorage.setItem('logado', 'true');
                 localStorage.setItem('perfil', 'Administrador');
-                setTimeout(() => window.location.href = 'admin.html', 800);
+                setTimeout(() => window.location.replace('admin.html'), 800);
             } else {
                 showAlert("Senha incorreta. Tente novamente.", "error");
             }
@@ -216,13 +208,19 @@
             showAlert("Bem-vindo, estudante! Redirecionando...", "success");
             localStorage.setItem('logado', 'true');
             localStorage.setItem('perfil', 'Estudante');
-            setTimeout(() => window.location.href = 'estudante.html', 800);
+            setTimeout(() => window.location.replace('estudante.html'), 800);
         }
 
-        // Verifica se já está logado
+        // Verifica se já está logado — com proteção contra loop de redirecionamento
         if (localStorage.getItem('logado') === 'true') {
-            const perfil = localStorage.getItem('perfil');
-            window.location.href = perfil === 'Administrador' ? 'admin.html' : 'estudante.html';
+            const guard = sessionStorage.getItem('ct_redirect_guard');
+            if (guard && (Date.now() - parseInt(guard)) < 3000) {
+                // Voltamos de um redirecionamento forçado nas últimas 3s: permanece no login
+                sessionStorage.removeItem('ct_redirect_guard');
+            } else {
+                const perfil = localStorage.getItem('perfil');
+                window.location.replace(perfil === 'Administrador' ? 'admin.html' : 'estudante.html');
+            }
         }
     </script>
 </body>
