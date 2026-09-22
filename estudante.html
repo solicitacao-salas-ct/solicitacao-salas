@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Alocação de Salas – CT</title>
+    <title>Solicitação de Reserva de Salas – CT</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -287,17 +287,17 @@
 </head>
 <body>
     <div class="sidebar">
-        <h2>🏫 Alocação de Salas</h2>
+        <h2>🏫 Solicitação de Salas</h2>
         <button class="sidebar-btn" onclick="logout()">🚪 Sair / Logout</button>
         <div style="margin-top: 24px; font-size: 0.8rem; opacity: 0.7;">
-            <p>Perfil: <strong>Administrador</strong></p>
+            <p>Perfil: <strong id="perfil-atual">—</strong></p>
             <p id="current-date"></p>
         </div>
     </div>
 
     <div class="main-content">
         <div class="header">
-            <h1>🏫 Sistema de Alocação de Salas – CT</h1>
+            <h1>🏫 Solicitação de Reserva de Salas – CT</h1>
             <p>Solicite a reserva de salas informando os dados do seu evento</p>
         </div>
 
@@ -432,7 +432,6 @@
                 </table>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="btn-primary" onclick="salvarGitHub()">☁️ Salvar no GitHub</button>
                 <button class="btn-success" onclick="baixarBackup()">📥 Baixar cópia local (backup)</button>
             </div>
         </div>
@@ -567,7 +566,16 @@
         }
 
         function formatDate(date) {
-            return date.toISOString().split('T')[0];
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseDataLocal(s) {
+            if (!s) return null;
+            const [y, m, d] = s.split("-").map(Number);
+            return new Date(y, m - 1, d); // meia-noite no fuso local, sem desvio de dia
         }
 
         // ===============================
@@ -621,8 +629,8 @@
             let datasVerificar = [];
 
             if (dataFim && diasEvento && diasEvento.length > 0) {
-                const start = new Date(dataIni);
-                const end = new Date(dataFim);
+                const start = parseDataLocal(dataIni);
+                const end = parseDataLocal(dataFim);
                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const diaSem = mappingDiaSemana(new Date(d));
                     if (diasEvento.includes(diaSem)) {
@@ -680,7 +688,7 @@
             const dataFim = usaFim === 'sim' ? document.getElementById('data_fim').value : null;
             const diasEvento = usaFim === 'sim' 
                 ? Array.from(document.getElementById('dias_evento').selectedOptions).map(o => o.value)
-                : [mappingDiaSemana(new Date(dataIni))];
+                : [mappingDiaSemana(parseDataLocal(dataIni))];
             const hIni = document.getElementById('h_ini').value;
             const hFim = document.getElementById('h_fim').value;
             const blocoPref = document.getElementById('bloco_pref').value;
@@ -716,9 +724,9 @@
             container.classList.remove('hidden');
 
             const dados = evento_dados;
-            let periodoStr = new Date(dados.dataIni).toLocaleDateString('pt-BR');
+            let periodoStr = parseDataLocal(dados.dataIni).toLocaleDateString('pt-BR');
             if (dados.dataFim) {
-                periodoStr += ` a ${new Date(dados.dataFim).toLocaleDateString('pt-BR')}`;
+                periodoStr += ` a ${parseDataLocal(dados.dataFim).toLocaleDateString('pt-BR')}`;
             }
             const diasStr = dados.diasEvento.join(", ");
 
@@ -795,7 +803,7 @@
             const inicioStr = dados.hIni;
             const fimStr = dados.hFim;
             const nomeEvento = dados.evento;
-            const desc = `RESERVA_MANUAL - ${nomeEvento}`;
+            const desc = `SOLICITACAO - ${nomeEvento}`;
 
             const datasList = [];
             for (const data of dados.datas_verif) {
@@ -823,7 +831,7 @@
                 CAPACIDADE: salaInfo.CAPACIDADE,
                 DATAS: datasList,
                 DESCRICAO: desc,
-                TIPO: "RESERVA_MANUAL"
+                TIPO: "SOLICITACAO"
             };
 
             reservas_lista.push(novaReserva);
@@ -859,13 +867,6 @@
         // ===============================
         // GITHUB E BACKUP
         // ===============================
-        function salvarGitHub() {
-            showAlert("⏳ Fazendo commit no GitHub... (simulação - em produção, integrar com API do GitHub)", "info");
-            setTimeout(() => {
-                showAlert("✅ Arquivo atualizado no GitHub com sucesso! (simulação)", "success");
-            }, 1500);
-        }
-
         function baixarBackup() {
             const dados = df_completo.map(r => ({
                 CURSO: r.CURSO,
@@ -913,7 +914,8 @@
         function logout() {
             localStorage.removeItem('logado');
             localStorage.removeItem('perfil');
-            window.location.href = 'index.html';
+            sessionStorage.removeItem('ct_redirect_guard');
+            window.location.replace('index.html');
         }
 
         // ===============================
@@ -923,9 +925,14 @@
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
 
-        // Verifica autenticação
-        if (localStorage.getItem('logado') !== 'true' || localStorage.getItem('perfil') !== 'Administrador') {
-            window.location.href = 'index.html';
+        // Verifica autenticação (com proteção contra loop de redirecionamento)
+        const perfilEsperado = 'Estudante';
+        if (localStorage.getItem('logado') !== 'true' || localStorage.getItem('perfil') !== perfilEsperado) {
+            sessionStorage.setItem('ct_redirect_guard', Date.now().toString());
+            window.location.replace('index.html');
+        } else {
+            sessionStorage.removeItem('ct_redirect_guard');
+            document.getElementById('perfil-atual').textContent = perfilEsperado;
         }
 
         inicializarDados();
