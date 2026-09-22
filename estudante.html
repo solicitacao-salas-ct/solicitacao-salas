@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Estudante – CT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .navbar h1 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .navbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .navbar-actions span {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        .btn-logout {
+            padding: 8px 18px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+        .welcome-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .welcome-text h2 {
+            font-size: 1.6rem;
+            color: #1a5276;
+            margin-bottom: 6px;
+        }
+        .welcome-text p {
+            color: #5d6d7e;
+            font-size: 1rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+        .stat-card .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a5276;
+        }
+        .stat-card .label {
+            font-size: 0.85rem;
+            color: #5d6d7e;
+            margin-top: 4px;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .content-grid { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+        .panel h3 {
+            font-size: 1.1rem;
+            color: #1a5276;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #2980b9;
+            box-shadow: 0 0 0 3px rgba(41,128,185,0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .btn-primary {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #2980b9 0%, #1a5276 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(41,128,185,0.25);
+        }
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #f1f5f9;
+            color: #1a5276;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        .task-list {
+            list-style: none;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        .task-item:hover {
+            background: #f1f5f9;
+        }
+        .task-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #2980b9;
+        }
+        .task-item.completed span {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+        .task-item span {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        .task-item .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-urgent { background: #fef2f2; color: #dc2626; }
+        .badge-normal { background: #eff6ff; color: #2563eb; }
+        .badge-done { background: #f0fdf4; color: #16a34a; }
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .schedule-table th, .schedule-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .schedule-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+        .schedule-table tr:hover {
+            background: #f8fafc;
+        }
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .alert.success {
+            display: block;
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        .alert.error {
+            display: block;
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .alert.info {
+            display: block;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+        .hidden { display: none !important; }
+        .room-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #2980b9;
+        }
+        .room-card h4 {
+            font-size: 0.9rem;
+            color: #1a5276;
+            margin-bottom: 2px;
+        }
+        .room-card p {
+            font-size: 0.8rem;
+            color: #5d6d7e;
+        }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #5d6d7e;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: white;
+            color: #2980b9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🎓 Portal do Estudante</h1>
+        <div class="navbar-actions">
+            <span id="user-greeting">Bem-vindo, Estudante</span>
+            <button class="btn-logout" onclick="logout()">🚪 Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <div class="welcome-text">
+                <h2>Bem-vindo ao Sistema de Solicitação de Salas</h2>
+                <p>Consulte horários, solicite reservas e acompanhe suas atividades</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">📚</div>
+                <div class="value" id="stat-disciplinas">6</div>
+                <div class="label">Disciplinas Matriculadas</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📅</div>
+                <div class="value" id="stat-aulas">24</div>
+                <div class="label">Aulas esta Semana</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📍</div>
+                <div class="value" id="stat-salas">4</div>
+                <div class="label">Salas Utilizadas</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">✅</div>
+                <div class="value" id="stat-freq">92%</div>
+                <div class="label">Frequência Geral</div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <!-- Painel Esquerdo: Solicitação e Consulta -->
+            <div class="panel">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('consulta')">🔍 Consultar Salas</button>
+                    <button class="tab-btn" onclick="switchTab('solicitar')">📝 Solicitar Sala</button>
+                </div>
+
+                <!-- Aba Consulta -->
+                <div id="tab-consulta" class="tab-content active">
+                    <h3>🔍 Consultar Disponibilidade de Salas</h3>
+                    <div class="form-group">
+                        <label>Data:</label>
+                        <input type="date" id="consulta-data" value="2026-03-02">
+                    </div>
+                    <div class="form-group">
+                        <label>Horário:</label>
+                        <div class="form-row">
+                            <input type="time" id="consulta-ini" value="08:00">
+                            <input type="time" id="consulta-fim" value="10:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Bloco:</label>
+                        <select id="consulta-bloco">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="consultarSalas()">🔍 Consultar</button>
+                    <div id="consulta-resultado" style="margin-top: 16px;"></div>
+                </div>
+
+                <!-- Aba Solicitar -->
+                <div id="tab-solicitar" class="tab-content">
+                    <h3>📝 Solicitar Reserva de Sala</h3>
+                    <div class="form-group">
+                        <label>Nome do evento: *</label>
+                        <input type="text" id="sol-evento" placeholder="Ex: Grupo de Estudos">
+                    </div>
+                    <div class="form-group">
+                        <label>Data: *</label>
+                        <input type="date" id="sol-data" value="2026-03-02">
+                    </div>
+                    <div class="form-group">
+                        <label>Horário: *</label>
+                        <div class="form-row">
+                            <input type="time" id="sol-ini" value="14:00">
+                            <input type="time" id="sol-fim" value="16:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Número de participantes: *</label>
+                        <input type="number" id="sol-capacidade" value="15" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Observações:</label>
+                        <textarea id="sol-obs" rows="3" placeholder="Informe detalhes adicionais..."></textarea>
+                    </div>
+                    <button class="btn-primary" onclick="solicitarSala()">📤 Enviar Solicitação</button>
+                    <div id="sol-alert"></div>
+                </div>
+            </div>
+
+            <!-- Painel Direito: Tarefas e Horários -->
+            <div>
+                <!-- Minhas Tarefas -->
+                <div class="panel" style="margin-bottom: 24px;">
+                    <h3>📋 Minhas Tarefas</h3>
+                    <ul class="task-list" id="task-list">
+                        <li class="task-item">
+                            <input type="checkbox" onchange="toggleTask(this)">
+                            <span>Entrega do Trabalho de Cálculo I</span>
+                            <span class="badge badge-urgent">URGENTE</span>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" onchange="toggleTask(this)">
+                            <span>Estudo em Grupo - Programação</span>
+                            <span class="badge badge-normal">NORMAL</span>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" checked onchange="toggleTask(this)">
+                            <span>Leitura do Cap. 5 - Física I</span>
+                            <span class="badge badge-done">CONCLUÍDO</span>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" onchange="toggleTask(this)">
+                            <span>Revisão para Prova de Álgebra</span>
+                            <span class="badge badge-urgent">URGENTE</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Meus Horários -->
+                <div class="panel">
+                    <h3>📅 Meus Horários de Hoje</h3>
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th>Disciplina</th>
+                                <th>Sala</th>
+                            </tr>
+                        </thead>
+                        <tbody id="horarios-hoje">
+                            <tr>
+                                <td>08:00 - 10:00</td>
+                                <td>Cálculo I</td>
+                                <td>CT-001</td>
+                            </tr>
+                            <tr>
+                                <td>10:00 - 12:00</td>
+                                <td>Física I</td>
+                                <td>CT-003</td>
+                            </tr>
+                            <tr>
+                                <td>14:00 - 16:00</td>
+                                <td>Programação</td>
+                                <td>LAB-01</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Minhas Solicitações -->
+        <div class="panel" style="margin-top: 24px;">
+            <h3>📨 Minhas Solicitações de Sala</h3>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Evento</th>
+                        <th>Sala</th>
+                        <th>Data</th>
+                        <th>Horário</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="minhas-solicitacoes">
+                    <tr>
+                        <td>Grupo de Estudos - Cálculo</td>
+                        <td>CT-102</td>
+                        <td>05/03/2026</td>
+                        <td>16:00 - 18:00</td>
+                        <td><span class="badge badge-done">APROVADO</span></td>
+                    </tr>
+                    <tr>
+                        <td>Reunião PET</td>
+                        <td>BL-A-01</td>
+                        <td>10/03/2026</td>
+                        <td>12:00 - 14:00</td>
+                        <td><span class="badge badge-normal">PENDENTE</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ===============================
+        // DADOS E CONFIGURAÇÕES
+        // ===============================
+        const DIAS_SEMANA = ["DOMINGO", "SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO"];
+
+        const salasMock = [
+            {nome: "CT-001", capacidade: 40, bloco: "CT"},
+            {nome: "CT-002", capacidade: 35, bloco: "CT"},
+            {nome: "CT-003", capacidade: 50, bloco: "CT"},
+            {nome: "CT-101", capacidade: 30, bloco: "CT"},
+            {nome: "CT-102", capacidade: 45, bloco: "CT"},
+            {nome: "CT-201", capacidade: 60, bloco: "CT"},
+            {nome: "CT-202", capacidade: 25, bloco: "CT"},
+            {nome: "BL-A-01", capacidade: 40, bloco: "BL-A"},
+            {nome: "BL-A-02", capacidade: 35, bloco: "BL-A"},
+            {nome: "BL-B-01", capacidade: 50, bloco: "BL-B"},
+            {nome: "BL-B-02", capacidade: 30, bloco: "BL-B"},
+            {nome: "LAB-01", capacidade: 20, bloco: "LAB"},
+            {nome: "LAB-02", capacidade: 20, bloco: "LAB"},
+        ];
+
+        const ocupacoesMock = [
+            {sala: "CT-001", dia: "SEGUNDA", inicio: "08:00", fim: "10:00", desc: "Cálculo I - T01"},
+            {sala: "CT-001", dia: "QUARTA", inicio: "08:00", fim: "10:00", desc: "Cálculo I - T01"},
+            {sala: "CT-001", dia: "TERÇA", inicio: "10:00", fim: "12:00", desc: "Física I - T02"},
+            {sala: "CT-002", dia: "SEGUNDA", inicio: "14:00", fim: "16:00", desc: "Programação - T01"},
+            {sala: "CT-002", dia: "QUARTA", inicio: "14:00", fim: "16:00", desc: "Programação - T01"},
+            {sala: "CT-002", dia: "SEXTA", inicio: "14:00", fim: "16:00", desc: "Programação - T01"},
+            {sala: "LAB-01", dia: "SEXTA", inicio: "08:00", fim: "12:00", desc: "Lab. Física - T01"},
+        ];
+
+        let minhasSolicitacoes = [
+            {evento: "Grupo de Estudos - Cálculo", sala: "CT-102", data: "05/03/2026", inicio: "16:00", fim: "18:00", status: "APROVADO"},
+            {evento: "Reunião PET", sala: "BL-A-01", data: "10/03/2026", inicio: "12:00", fim: "14:00", status: "PENDENTE"},
+        ];
+
+        // ===============================
+        // UTILITÁRIOS
+        // ===============================
+        function timeToMinutes(t) {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+        }
+
+        function intervalsOverlap(aStart, aEnd, bStart, bEnd) {
+            return Math.max(timeToMinutes(aStart), timeToMinutes(bStart)) < Math.min(timeToMinutes(aEnd), timeToMinutes(bEnd));
+        }
+
+        function getDiaSemana(dataStr) {
+            const data = new Date(dataStr + "T00:00:00");
+            return DIAS_SEMANA[data.getDay()];
+        }
+
+        function formatDateBR(dataStr) {
+            const [ano, mes, dia] = dataStr.split("-");
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        // ===============================
+        // INICIALIZAÇÃO
+        // ===============================
+        function init() {
+            // Popular select de blocos
+            const blocos = [...new Set(salasMock.map(s => s.bloco))].sort();
+            const select = document.getElementById('consulta-bloco');
+            blocos.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                select.appendChild(opt);
+            });
+
+            // Data padrão = hoje
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('consulta-data').value = hoje;
+            document.getElementById('sol-data').value = hoje;
+
+            // Verifica autenticação
+            if (localStorage.getItem('logado') !== 'true' || localStorage.getItem('perfil') !== 'Estudante') {
+                window.location.href = 'index.html';
+            }
+        }
+
+        // ===============================
+        // TABS
+        // ===============================
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
+        // ===============================
+        // CONSULTAR SALAS
+        // ===============================
+        function consultarSalas() {
+            const data = document.getElementById('consulta-data').value;
+            const ini = document.getElementById('consulta-ini').value;
+            const fim = document.getElementById('consulta-fim').value;
+            const bloco = document.getElementById('consulta-bloco').value;
+            const diaSemana = getDiaSemana(data);
+
+            const disponiveis = salasMock.filter(sala => {
+                if (bloco && sala.bloco !== bloco) return false;
+
+                const ocupadas = ocupacoesMock.filter(o => 
+                    o.sala === sala.nome && o.dia === diaSemana
+                );
+
+                for (const o of ocupadas) {
+                    if (intervalsOverlap(o.inicio, o.fim, ini, fim)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            const container = document.getElementById('consulta-resultado');
+            if (disponiveis.length === 0) {
+                container.innerHTML = `
+                    <div class="alert error" style="display:block;">
+                        ❌ Nenhuma sala disponível para ${diaSemana}, ${formatDateBR(data)}, das ${ini} às ${fim}.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="alert success" style="display:block;">
+                    ✅ ${disponiveis.length} sala(s) disponível(is) em ${diaSemana}, ${formatDateBR(data)}, das ${ini} às ${fim}:
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 12px;">
+            `;
+
+            disponiveis.forEach(sala => {
+                html += `
+                    <div class="room-card">
+                        <h4>📍 ${sala.nome}</h4>
+                        <p>👥 Capacidade: ${sala.capacidade} lugares | Bloco: ${sala.bloco}</p>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ===============================
+        // SOLICITAR SALA
+        // ===============================
+        function solicitarSala() {
+            const evento = document.getElementById('sol-evento').value.trim();
+            const data = document.getElementById('sol-data').value;
+            const ini = document.getElementById('sol-ini').value;
+            const fim = document.getElementById('sol-fim').value;
+            const capacidade = parseInt(document.getElementById('sol-capacidade').value) || 0;
+            const obs = document.getElementById('sol-obs').value.trim();
+
+            const alertDiv = document.getElementById('sol-alert');
+
+            if (!evento || !data || !ini || !fim || capacidade <= 0) {
+                alertDiv.innerHTML = `<div class="alert error" style="display:block;">⚠️ Preencha todos os campos obrigatórios.</div>`;
+                return;
+            }
+
+            if (timeToMinutes(fim) <= timeToMinutes(ini)) {
+                alertDiv.innerHTML = `<div class="alert error" style="display:block;">⚠️ Horário de término deve ser posterior ao início.</div>`;
+                return;
+            }
+
+            // Encontra uma sala disponível automaticamente
+            const diaSemana = getDiaSemana(data);
+            const salaDisponivel = salasMock.find(sala => {
+                if (sala.capacidade < capacidade) return false;
+                const ocupadas = ocupacoesMock.filter(o => o.sala === sala.nome && o.dia === diaSemana);
+                for (const o of ocupadas) {
+                    if (intervalsOverlap(o.inicio, o.fim, ini, fim)) return false;
+                }
+                return true;
+            });
+
+            if (!salaDisponivel) {
+                alertDiv.innerHTML = `<div class="alert error" style="display:block;">❌ Nenhuma sala disponível com capacidade para ${capacidade} pessoas no horário solicitado.</div>`;
+                return;
+            }
+
+            // Adiciona solicitação
+            const nova = {
+                evento: evento,
+                sala: salaDisponivel.nome,
+                data: formatDateBR(data),
+                inicio: ini,
+                fim: fim,
+                status: "PENDENTE"
+            };
+            minhasSolicitacoes.unshift(nova);
+            atualizarTabelaSolicitacoes();
+
+            alertDiv.innerHTML = `
+                <div class="alert success" style="display:block;">
+                    ✅ Solicitação enviada com sucesso!<br>
+                    <small>Sala sugerida: <b>${salaDisponivel.nome}</b> (capacidade: ${salaDisponivel.capacidade}). Aguarde aprovação do administrador.</small>
+                </div>
+            `;
+
+            // Limpa formulário
+            document.getElementById('sol-evento').value = '';
+            document.getElementById('sol-obs').value = '';
+        }
+
+        function atualizarTabelaSolicitacoes() {
+            const tbody = document.getElementById('minhas-solicitacoes');
+            tbody.innerHTML = minhasSolicitacoes.map(s => {
+                const badgeClass = s.status === 'APROVADO' ? 'badge-done' : 'badge-normal';
+                return `
+                    <tr>
+                        <td>${s.evento}</td>
+                        <td>${s.sala}</td>
+                        <td>${s.data}</td>
+                        <td>${s.inicio} - ${s.fim}</td>
+                        <td><span class="badge ${badgeClass}">${s.status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ===============================
+        // TAREFAS
+        // ===============================
+        function toggleTask(checkbox) {
+            const li = checkbox.closest('.task-item');
+            li.classList.toggle('completed', checkbox.checked);
+            const badge = li.querySelector('.badge');
+            if (checkbox.checked) {
+                badge.className = 'badge badge-done';
+                badge.textContent = 'CONCLUÍDO';
+            } else {
+                badge.className = 'badge badge-normal';
+                badge.textContent = 'NORMAL';
+            }
+        }
+
+        // ===============================
+        // LOGOUT
+        // ===============================
+        function logout() {
+            localStorage.removeItem('logado');
+            localStorage.removeItem('perfil');
+            window.location.href = 'index.html';
+        }
+
+        // Inicializa
+        init();
+    </script>
+</body>
+</html>

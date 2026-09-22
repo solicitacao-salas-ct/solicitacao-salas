@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            padding: 48px;
+            width: 100%;
+            max-width: 440px;
+            animation: slideUp 0.5s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-header h1 {
+            font-size: 1.75rem;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .login-header p {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        .profile-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: #f3f4f6;
+            padding: 4px;
+            border-radius: 12px;
+        }
+        .profile-option {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .profile-option.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102,126,234,0.3);
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-top: 16px;
+            font-size: 0.9rem;
+            display: none;
+            animation: shake 0.5s;
+        }
+        .alert.error {
+            display: block;
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .alert.success {
+            display: block;
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .hidden { display: none !important; }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔒 Bem-vindo!</h1>
+            <p>Por favor, selecione como deseja acessar o sistema:</p>
+        </div>
+
+        <div class="profile-selector">
+            <button class="profile-option active" data-profile="estudante" onclick="selectProfile('estudante')">
+                🎓 Estudante
+            </button>
+            <button class="profile-option" data-profile="admin" onclick="selectProfile('admin')">
+                🛡️ Administrador
+            </button>
+        </div>
+
+        <div id="admin-form" class="hidden">
+            <div class="form-group">
+                <label for="senha">Digite a senha de Administrador:</label>
+                <input type="password" id="senha" placeholder="••••••••">
+            </div>
+            <button class="btn-primary" onclick="loginAdmin()">Acessar como Admin</button>
+        </div>
+
+        <div id="estudante-form">
+            <button class="btn-primary" onclick="loginEstudante()">Acessar como Estudante</button>
+        </div>
+
+        <div id="alert" class="alert"></div>
+    </div>
+
+    <script>
+        const SENHA_ADMIN = "admin123";
+        let perfilAtual = 'estudante';
+
+        function selectProfile(profile) {
+            perfilAtual = profile;
+            document.querySelectorAll('.profile-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.profile === profile);
+            });
+            document.getElementById('admin-form').classList.toggle('hidden', profile !== 'admin');
+            document.getElementById('estudante-form').classList.toggle('hidden', profile !== 'estudante');
+            hideAlert();
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+        }
+
+        function hideAlert() {
+            document.getElementById('alert').className = 'alert';
+        }
+
+        function loginAdmin() {
+            const senha = document.getElementById('senha').value;
+            if (senha === SENHA_ADMIN) {
+                showAlert("Acesso autorizado! Redirecionando...", "success");
+                localStorage.setItem('logado', 'true');
+                localStorage.setItem('perfil', 'Administrador');
+                setTimeout(() => window.location.href = 'admin.html', 800);
+            } else {
+                showAlert("Senha incorreta. Tente novamente.", "error");
+            }
+        }
+
+        function loginEstudante() {
+            showAlert("Bem-vindo, estudante! Redirecionando...", "success");
+            localStorage.setItem('logado', 'true');
+            localStorage.setItem('perfil', 'Estudante');
+            setTimeout(() => window.location.href = 'estudante.html', 800);
+        }
+
+        // Verifica se já está logado
+        if (localStorage.getItem('logado') === 'true') {
+            const perfil = localStorage.getItem('perfil');
+            window.location.href = perfil === 'Administrador' ? 'admin.html' : 'estudante.html';
+        }
+    </script>
+</body>
+</html>

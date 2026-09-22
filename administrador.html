@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Alocação de Salas – CT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #1a5276 0%, #1a3a5c 100%);
+            color: white;
+            padding: 24px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .sidebar h2 {
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .sidebar-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-bottom: 8px;
+        }
+        .sidebar-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 32px;
+            max-width: 1200px;
+        }
+        .header {
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            font-size: 2rem;
+            color: #1a5276;
+            margin-bottom: 4px;
+        }
+        .header p {
+            color: #5d6d7e;
+            font-size: 1.05rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            border-left: 4px solid #1a5276;
+        }
+        .card h3 {
+            font-size: 1.1rem;
+            color: #1a5276;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #1a5276;
+            box-shadow: 0 0 0 3px rgba(26,82,118,0.1);
+        }
+        .btn-primary {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(26,82,118,0.25);
+        }
+        .btn-success {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(39,174,96,0.25);
+        }
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .alert.error {
+            display: block;
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .alert.success {
+            display: block;
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        .alert.warning {
+            display: block;
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+        .alert.info {
+            display: block;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+        .info-box {
+            background: #eaf2f8;
+            border-radius: 10px;
+            padding: 16px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .sala-card {
+            background: #e8f6f3;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #1abc9c;
+            margin-bottom: 12px;
+        }
+        .sala-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+        .sala-item {
+            background: #e8f6f3;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #1abc9c;
+        }
+        .sala-item h4 {
+            color: #1a5276;
+            margin-bottom: 4px;
+        }
+        .sala-item p {
+            color: #5d6d7e;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+        .expander {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .expander-header {
+            background: #f8fafc;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #1a5276;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .expander-content {
+            padding: 16px;
+            display: none;
+        }
+        .expander-content.open {
+            display: block;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+        tr:hover {
+            background: #f8fafc;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+        .center-btn {
+            display: flex;
+            justify-content: center;
+            margin: 24px 0;
+        }
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 24px 0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🏫 Alocação de Salas</h2>
+        <button class="sidebar-btn" onclick="logout()">🚪 Sair / Logout</button>
+        <div style="margin-top: 24px; font-size: 0.8rem; opacity: 0.7;">
+            <p>Perfil: <strong>Administrador</strong></p>
+            <p id="current-date"></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🏫 Sistema de Alocação de Salas – CT</h1>
+            <p>Solicite a reserva de salas informando os dados do seu evento</p>
+        </div>
+
+        <!-- ETAPA 1: DADOS DO EVENTO -->
+        <div class="card">
+            <h3>📋 Dados do Evento</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nome do evento: *</label>
+                    <input type="text" id="evento" placeholder="Ex: Reunião de Coordenação">
+                </div>
+                <div class="form-group">
+                    <label>Seu nome: *</label>
+                    <input type="text" id="nome_solicitante" placeholder="Ex: João Silva">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>E-mail para contato:</label>
+                    <input type="email" id="email" placeholder="exemplo@ufc.br">
+                </div>
+                <div class="form-group">
+                    <label>Número de participantes: *</label>
+                    <input type="number" id="capacidade" value="30" min="1">
+                </div>
+            </div>
+        </div>
+
+        <!-- ETAPA 2: PERÍODO DO EVENTO -->
+        <div class="card">
+            <h3>📅 Período do Evento</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data inicial: *</label>
+                    <input type="date" id="data_ini" value="2026-03-02">
+                </div>
+                <div class="form-group">
+                    <label>Evento recorrente?</label>
+                    <select id="usa_fim">
+                        <option value="nao">NÃO - Evento único</option>
+                        <option value="sim">SIM - Evento recorrente</option>
+                    </select>
+                </div>
+            </div>
+            <div id="recorrente-fields" class="hidden">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data final: *</label>
+                        <input type="date" id="data_fim" value="2026-07-07">
+                    </div>
+                    <div class="form-group">
+                        <label>Dias da semana: *</label>
+                        <select id="dias_evento" multiple size="3">
+                            <option value="SEGUNDA" selected>SEGUNDA</option>
+                            <option value="TERÇA">TERÇA</option>
+                            <option value="QUARTA">QUARTA</option>
+                            <option value="QUINTA">QUINTA</option>
+                            <option value="SEXTA">SEXTA</option>
+                            <option value="SÁBADO">SÁBADO</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ETAPA 3: HORÁRIO DO EVENTO -->
+        <div class="card">
+            <h3>⏰ Horário do Evento</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Horário de início: *</label>
+                    <input type="time" id="h_ini" value="08:00">
+                </div>
+                <div class="form-group">
+                    <label>Horário de término: *</label>
+                    <input type="time" id="h_fim" value="10:00">
+                </div>
+            </div>
+        </div>
+
+        <!-- ETAPA 4: PREFERÊNCIA DE SALA -->
+        <div class="card">
+            <h3>🏢 Preferência de Sala (Opcional)</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Bloco de preferência:</label>
+                    <select id="bloco_pref">
+                        <option value="">Qualquer bloco</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sala específica:</label>
+                    <select id="sala_pref">
+                        <option value="">Qualquer sala</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-btn">
+            <button class="btn-primary" onclick="buscarSalas()">🔍 Buscar Salas Disponíveis</button>
+        </div>
+
+        <div id="alert"></div>
+
+        <!-- RESULTADO: SALAS DISPONÍVEIS -->
+        <div id="resultado-salas" class="hidden">
+            <div class="divider"></div>
+            <h2 style="color: #1a5276; margin-bottom: 16px;">✅ Salas Disponíveis</h2>
+            <div id="info-evento" class="info-box"></div>
+            <div id="salas-container"></div>
+        </div>
+
+        <!-- RESERVAS REALIZADAS -->
+        <div id="reservas-section" class="hidden">
+            <div class="divider"></div>
+            <h2 style="color: #1a5276; margin-bottom: 16px;">📋 Reservas Realizadas nesta Sessão</h2>
+            <div class="table-container">
+                <table id="tabela-reservas">
+                    <thead>
+                        <tr>
+                            <th>SALA</th>
+                            <th>DISCIPLINA</th>
+                            <th>DIAS</th>
+                            <th>HORÁRIO INÍCIO</th>
+                            <th>HORÁRIO FINAL</th>
+                            <th>ALUNOS</th>
+                            <th>PROFESSOR</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="btn-primary" onclick="salvarGitHub()">☁️ Salvar no GitHub</button>
+                <button class="btn-success" onclick="baixarBackup()">📥 Baixar cópia local (backup)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===============================
+        // CONFIGURAÇÕES E CONSTANTES
+        // ===============================
+        const DIAS_SEMANA = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO"];
+        const INDICE_DIAS = {"SEGUNDA": 0, "TERÇA": 1, "QUARTA": 2, "QUINTA": 3, "SEXTA": 4, "SÁBADO": 5};
+        const MAPPING_DIAS = {
+            'MONDAY': 'SEGUNDA', 'TUESDAY': 'TERÇA', 'WEDNESDAY': 'QUARTA',
+            'THURSDAY': 'QUINTA', 'FRIDAY': 'SEXTA', 'SATURDAY': 'SÁBADO', 'SUNDAY': 'DOMINGO'
+        };
+
+        // Dados simulados de salas e disciplinas (em produção, viriam de API/arquivo)
+        let salas_ct = [];
+        let df_processado = [];
+        let reservas_lista = [];
+        let df_completo = [];
+        let evento_dados = {};
+        let salas_disponiveis = [];
+
+        // ===============================
+        // DADOS DE EXEMPLO (mock)
+        // ===============================
+        function inicializarDados() {
+            // Salas do Centro de Tecnologia
+            const salasMock = [
+                {nome: "CT-001", capacidade: 40},
+                {nome: "CT-002", capacidade: 35},
+                {nome: "CT-003", capacidade: 50},
+                {nome: "CT-101", capacidade: 30},
+                {nome: "CT-102", capacidade: 45},
+                {nome: "CT-201", capacidade: 60},
+                {nome: "CT-202", capacidade: 25},
+                {nome: "BL-A-01", capacidade: 40},
+                {nome: "BL-A-02", capacidade: 35},
+                {nome: "BL-B-01", capacidade: 50},
+                {nome: "BL-B-02", capacidade: 30},
+                {nome: "LAB-01", capacidade: 20},
+                {nome: "LAB-02", capacidade: 20},
+            ];
+
+            salas_ct = salasMock.map(s => ({
+                NOME: s.nome,
+                CAPACIDADE: s.capacidade,
+                DATAS: new Set(),
+                HORARIOS_OCUPADOS: new Set(),
+                HORARIOS_OCUPADOS_SEMANA: Object.fromEntries(DIAS_SEMANA.map(d => [d, []])),
+                RESERVAS: []
+            }));
+
+            // Disciplinas alocadas de exemplo
+            const disciplinasMock = [
+                {curso: "ENG", codigo: "ECO001", sala: "CT-001", disciplina: "Cálculo I", turma: "T01", dias: "SEGUNDA,QUARTA", horario_inicio: "08:00", horario_final: "10:00", alunos: 35, professor: "Prof. Silva"},
+                {curso: "ENG", codigo: "ECO002", sala: "CT-001", disciplina: "Física I", turma: "T02", dias: "TERÇA,QUINTA", horario_inicio: "10:00", horario_final: "12:00", alunos: 30, professor: "Prof. Santos"},
+                {curso: "ENG", codigo: "ECO003", sala: "CT-002", disciplina: "Programação", turma: "T01", dias: "SEGUNDA,QUARTA,SEXTA", horario_inicio: "14:00", horario_final: "16:00", alunos: 32, professor: "Prof. Oliveira"},
+                {curso: "ENG", codigo: "ECO004", sala: "CT-101", disciplina: "Álgebra Linear", turma: "T01", dias: "TERÇA,QUINTA", horario_inicio: "08:00", horario_final: "10:00", alunos: 25, professor: "Prof. Lima"},
+                {curso: "ENG", codigo: "ECO005", sala: "BL-A-01", disciplina: "Química Geral", turma: "T01", dias: "SEGUNDA,QUARTA", horario_inicio: "10:00", horario_final: "12:00", alunos: 38, professor: "Prof. Costa"},
+                {curso: "ENG", codigo: "ECO006", sala: "LAB-01", disciplina: "Lab. Física", turma: "T01", dias: "SEXTA", horario_inicio: "08:00", horario_final: "12:00", alunos: 18, professor: "Prof. Mendes"},
+            ];
+
+            df_processado = disciplinasMock.map(d => ({
+                CURSO: d.curso,
+                CODIGO: d.codigo,
+                SALA: d.sala,
+                DISCIPLINA: d.disciplina,
+                TURMA: d.turma,
+                DIAS: d.dias,
+                HORARIO_INICIO: d.horario_inicio,
+                HORARIO_FINAL: d.horario_final,
+                ALUNOS: d.alunos,
+                PROFESSOR: d.professor,
+                CAPACIDADE: salas_ct.find(s => s.NOME === d.sala)?.CAPACIDADE || 0,
+                DESCRICAO: `${d.codigo} - ${d.disciplina} - ${d.turma} - ${d.professor}`,
+                TIPO: "DISCIPLINA"
+            }));
+
+            // Popula horários ocupados nas salas
+            disciplinasMock.forEach(d => {
+                const sala = salas_ct.find(s => s.NOME === d.sala);
+                if (sala) {
+                    const dias = d.dias.split(",");
+                    dias.forEach(dia => {
+                        sala.HORARIOS_OCUPADOS_SEMANA[dia.trim()].push([
+                            d.horario_inicio, d.horario_final,
+                            `${d.codigo} - ${d.disciplina} - ${d.turma} - ${d.professor}`
+                        ]);
+                        sala.HORARIOS_OCUPADOS.add(`${d.horario_inicio} - ${d.horario_final}`);
+                    });
+                }
+            });
+
+            df_completo = [...df_processado];
+            popularSelects();
+        }
+
+        // ===============================
+        // UTILITÁRIOS
+        // ===============================
+        function strToTime(s) {
+            if (!s) return null;
+            const parts = s.split(":");
+            if (parts.length >= 2) {
+                return {hour: parseInt(parts[0]), minute: parseInt(parts[1])};
+            }
+            return null;
+        }
+
+        function timeToMinutes(t) {
+            if (!t) return 0;
+            if (typeof t === 'string') {
+                const parts = t.split(":");
+                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            }
+            return t.hour * 60 + t.minute;
+        }
+
+        function intervalsOverlap(aStart, aEnd, bStart, bEnd) {
+            const a_s = timeToMinutes(aStart);
+            const a_e = timeToMinutes(aEnd);
+            const b_s = timeToMinutes(bStart);
+            const b_e = timeToMinutes(bEnd);
+            return Math.max(a_s, b_s) < Math.min(a_e, b_e);
+        }
+
+        function mappingDiaSemana(data) {
+            const dias = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
+            return dias[data.getDay()];
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // ===============================
+        // INTERFACE
+        // ===============================
+        function popularSelects() {
+            const blocoSelect = document.getElementById('bloco_pref');
+            const blocos = [...new Set(salas_ct.map(s => s.NOME.split("-")[0]))].sort();
+            blocos.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                blocoSelect.appendChild(opt);
+            });
+
+            const salaSelect = document.getElementById('sala_pref');
+            const salas = salas_ct.map(s => s.NOME).sort();
+            salas.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                salaSelect.appendChild(opt);
+            });
+        }
+
+        document.getElementById('usa_fim').addEventListener('change', function() {
+            document.getElementById('recorrente-fields').classList.toggle('hidden', this.value !== 'sim');
+        });
+
+        document.getElementById('bloco_pref').addEventListener('change', function() {
+            const bloco = this.value;
+            const salaSelect = document.getElementById('sala_pref');
+            salaSelect.innerHTML = '<option value="">Qualquer sala</option>';
+            const salas = bloco 
+                ? salas_ct.filter(s => s.NOME.startsWith(bloco)).map(s => s.NOME).sort()
+                : salas_ct.map(s => s.NOME).sort();
+            salas.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                salaSelect.appendChild(opt);
+            });
+        });
+
+        // ===============================
+        // VERIFICAÇÃO DE DISPONIBILIDADE
+        // ===============================
+        function verificarDisponibilidade(dataIni, dataFim, diasEvento, hIni, hFim, capacidade, blocoPref, salaPref) {
+            const inicioStr = hIni;
+            const fimStr = hFim;
+            let datasVerificar = [];
+
+            if (dataFim && diasEvento && diasEvento.length > 0) {
+                const start = new Date(dataIni);
+                const end = new Date(dataFim);
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const diaSem = mappingDiaSemana(new Date(d));
+                    if (diasEvento.includes(diaSem)) {
+                        datasVerificar.push(new Date(d));
+                    }
+                }
+            } else {
+                datasVerificar = [new Date(dataIni)];
+            }
+
+            const salasDisp = [];
+
+            for (const sala of salas_ct) {
+                if (blocoPref && blocoPref !== "Qualquer bloco" && !sala.NOME.startsWith(blocoPref)) continue;
+                if (salaPref && salaPref !== "Qualquer sala" && sala.NOME !== salaPref) continue;
+                if (capacidade > sala.CAPACIDADE) continue;
+
+                let temConflito = false;
+                for (const data of datasVerificar) {
+                    const diaPort = mappingDiaSemana(data);
+                    const ocupados = sala.HORARIOS_OCUPADOS_SEMANA[diaPort] || [];
+                    for (const [a, b, desc] of ocupados) {
+                        if (intervalsOverlap(a, b, inicioStr, fimStr)) {
+                            temConflito = true;
+                            break;
+                        }
+                    }
+                    if (temConflito) break;
+                }
+
+                if (!temConflito) {
+                    salasDisp.push({
+                        SALA: sala.NOME,
+                        CAPACIDADE: sala.CAPACIDADE,
+                        BLOCO: sala.NOME.split("-")[0] || sala.NOME
+                    });
+                }
+            }
+
+            return {salas: salasDisp, datas: datasVerificar};
+        }
+
+        // ===============================
+        // BUSCAR SALAS
+        // ===============================
+        function buscarSalas() {
+            hideAlert();
+            document.getElementById('resultado-salas').classList.add('hidden');
+
+            const evento = document.getElementById('evento').value.trim();
+            const nome = document.getElementById('nome_solicitante').value.trim();
+            const capacidade = parseInt(document.getElementById('capacidade').value) || 0;
+            const dataIni = document.getElementById('data_ini').value;
+            const usaFim = document.getElementById('usa_fim').value;
+            const dataFim = usaFim === 'sim' ? document.getElementById('data_fim').value : null;
+            const diasEvento = usaFim === 'sim' 
+                ? Array.from(document.getElementById('dias_evento').selectedOptions).map(o => o.value)
+                : [mappingDiaSemana(new Date(dataIni))];
+            const hIni = document.getElementById('h_ini').value;
+            const hFim = document.getElementById('h_fim').value;
+            const blocoPref = document.getElementById('bloco_pref').value;
+            const salaPref = document.getElementById('sala_pref').value;
+
+            // Validações
+            const erros = [];
+            if (!evento) erros.push("• Nome do evento é obrigatório");
+            if (!nome) erros.push("• Nome do solicitante é obrigatório");
+            if (capacidade <= 0) erros.push("• Número de participantes deve ser maior que zero");
+            if (usaFim === 'sim' && (!dataFim || diasEvento.length === 0)) erros.push("• Para eventos recorrentes, informe data final e dias da semana");
+            if (timeToMinutes(hFim) <= timeToMinutes(hIni)) erros.push("• Horário de término deve ser posterior ao horário de início");
+
+            if (erros.length > 0) {
+                showAlert("⚠️ Por favor, corrija os seguintes erros: " + erros.join(""), "error");
+                return;
+            }
+
+            const resultado = verificarDisponibilidade(dataIni, dataFim, diasEvento, hIni, hFim, capacidade, blocoPref, salaPref);
+            salas_disponiveis = resultado.salas;
+
+            evento_dados = {
+                evento, nome, email: document.getElementById('email').value,
+                capacidade, dataIni, dataFim, diasEvento, hIni, hFim,
+                datas_verif: resultado.datas, blocoPref, salaPref
+            };
+
+            mostrarResultados();
+        }
+
+        function mostrarResultados() {
+            const container = document.getElementById('resultado-salas');
+            container.classList.remove('hidden');
+
+            const dados = evento_dados;
+            let periodoStr = new Date(dados.dataIni).toLocaleDateString('pt-BR');
+            if (dados.dataFim) {
+                periodoStr += ` a ${new Date(dados.dataFim).toLocaleDateString('pt-BR')}`;
+            }
+            const diasStr = dados.diasEvento.join(", ");
+
+            document.getElementById('info-evento').innerHTML = `
+                <b>📌 Evento:</b> ${dados.evento} | <b>👥 Participantes:</b> ${dados.capacidade}<br>
+                <b>📅 Período:</b> ${periodoStr} | <b>📆 Dias:</b> ${diasStr}<br>
+                <b>⏰ Horário:</b> ${dados.hIni} - ${dados.hFim}
+            `;
+
+            const salasContainer = document.getElementById('salas-container');
+
+            if (salas_disponiveis.length === 0) {
+                salasContainer.innerHTML = `
+                    <div class="alert warning">
+                        ⚠️ <b>Nenhuma sala disponível</b> para os critérios informados. Tente ajustar a capacidade, horário ou período.
+                    </div>
+                `;
+                return;
+            }
+
+            // Agrupar por bloco
+            const porBloco = {};
+            salas_disponiveis.forEach(s => {
+                if (!porBloco[s.BLOCO]) porBloco[s.BLOCO] = [];
+                porBloco[s.BLOCO].push(s);
+            });
+
+            let html = `<div class="alert success">✅ <b>${salas_disponiveis.length} sala(s) encontrada(s) disponível(is)</b></div>`;
+
+            for (const bloco of Object.keys(porBloco).sort()) {
+                const salas = porBloco[bloco];
+                html += `
+                    <div class="expander">
+                        <div class="expander-header" onclick="toggleExpander(this)">
+                            <span>🏢 Bloco ${bloco} (${salas.length} sala(s))</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="expander-content">
+                            <div class="sala-grid">
+                                ${salas.map(sala => `
+                                    <div class="sala-item">
+                                        <h4>📍 ${sala.SALA}</h4>
+                                        <p>👥 Capacidade: ${sala.CAPACIDADE} lugares</p>
+                                        <span class="badge badge-success">✅ Disponível</span><br><br>
+                                        <button class="btn-success" onclick="realizarReserva('${sala.SALA}')">✅ Reservar ${sala.SALA}</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            salasContainer.innerHTML = html;
+        }
+
+        function toggleExpander(header) {
+            const content = header.nextElementSibling;
+            content.classList.toggle('open');
+            header.querySelector('span:last-child').textContent = content.classList.contains('open') ? '▲' : '▼';
+        }
+
+        // ===============================
+        // REALIZAR RESERVA
+        // ===============================
+        function realizarReserva(salaEscolhida) {
+            const dados = evento_dados;
+            const salaInfo = salas_ct.find(s => s.NOME === salaEscolhida);
+            if (!salaInfo) {
+                showAlert("Erro: Sala não encontrada.", "error");
+                return;
+            }
+
+            const inicioStr = dados.hIni;
+            const fimStr = dados.hFim;
+            const nomeEvento = dados.evento;
+            const desc = `RESERVA_MANUAL - ${nomeEvento}`;
+
+            const datasList = [];
+            for (const data of dados.datas_verif) {
+                const diaPort = mappingDiaSemana(data);
+                salaInfo.RESERVAS.push([data, inicioStr, fimStr, desc]);
+                if (!salaInfo.HORARIOS_OCUPADOS_SEMANA[diaPort]) {
+                    salaInfo.HORARIOS_OCUPADOS_SEMANA[diaPort] = [];
+                }
+                salaInfo.HORARIOS_OCUPADOS_SEMANA[diaPort].push([inicioStr, fimStr, desc]);
+                salaInfo.HORARIOS_OCUPADOS.add(`${inicioStr} - ${fimStr}`);
+                datasList.push(data);
+            }
+
+            const novaReserva = {
+                CURSO: "RESERVA",
+                CODIGO: "MANUAL",
+                SALA: salaEscolhida,
+                DISCIPLINA: nomeEvento,
+                TURMA: "N/A",
+                DIAS: dados.diasEvento.join(","),
+                HORARIO_INICIO: inicioStr,
+                HORARIO_FINAL: fimStr,
+                ALUNOS: dados.capacidade,
+                PROFESSOR: dados.nome,
+                CAPACIDADE: salaInfo.CAPACIDADE,
+                DATAS: datasList,
+                DESCRICAO: desc,
+                TIPO: "RESERVA_MANUAL"
+            };
+
+            reservas_lista.push(novaReserva);
+            df_completo = [...df_processado, ...reservas_lista];
+            salas_disponiveis = [];
+
+            showAlert(`✅ Sala <b>${salaEscolhida}</b> reservada com sucesso para o evento ${nomeEvento}!`, "success");
+            atualizarTabelaReservas();
+            document.getElementById('resultado-salas').classList.add('hidden');
+        }
+
+        function atualizarTabelaReservas() {
+            if (reservas_lista.length === 0) {
+                document.getElementById('reservas-section').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('reservas-section').classList.remove('hidden');
+            const tbody = document.querySelector('#tabela-reservas tbody');
+            tbody.innerHTML = reservas_lista.map(r => `
+                <tr>
+                    <td>${r.SALA}</td>
+                    <td>${r.DISCIPLINA}</td>
+                    <td>${r.DIAS}</td>
+                    <td>${r.HORARIO_INICIO}</td>
+                    <td>${r.HORARIO_FINAL}</td>
+                    <td>${r.ALUNOS}</td>
+                    <td>${r.PROFESSOR}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ===============================
+        // GITHUB E BACKUP
+        // ===============================
+        function salvarGitHub() {
+            showAlert("⏳ Fazendo commit no GitHub... (simulação - em produção, integrar com API do GitHub)", "info");
+            setTimeout(() => {
+                showAlert("✅ Arquivo atualizado no GitHub com sucesso! (simulação)", "success");
+            }, 1500);
+        }
+
+        function baixarBackup() {
+            const dados = df_completo.map(r => ({
+                CURSO: r.CURSO,
+                CODIGO: r.CODIGO,
+                SALA: r.SALA,
+                DISCIPLINA: r.DISCIPLINA,
+                TURMA: r.TURMA,
+                DIAS: r.DIAS,
+                HORARIO_INICIO: r.HORARIO_INICIO,
+                HORARIO_FINAL: r.HORARIO_FINAL,
+                ALUNOS: r.ALUNOS,
+                PROFESSOR: r.PROFESSOR,
+                CAPACIDADE: r.CAPACIDADE,
+                TIPO: r.TIPO
+            }));
+
+            const csv = convertToCSV(dados);
+            const blob = new Blob(["\ufeff" + csv], {type: 'text/csv;charset=utf-8;'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'dados_disciplinas_backup.csv';
+            link.click();
+        }
+
+        function convertToCSV(data) {
+            if (data.length === 0) return "";
+            const headers = Object.keys(data[0]);
+            const rows = data.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(";"));
+            return [headers.join(";"), ...rows].join("\n");
+        }
+
+        // ===============================
+        // ALERTAS E UTILITÁRIOS
+        // ===============================
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.innerHTML = message.replace(/\n/g, '<br>');
+            alert.className = `alert ${type}`;
+        }
+
+        function hideAlert() {
+            document.getElementById('alert').className = 'alert';
+        }
+
+        function logout() {
+            localStorage.removeItem('logado');
+            localStorage.removeItem('perfil');
+            window.location.href = 'index.html';
+        }
+
+        // ===============================
+        // INICIALIZAÇÃO
+        // ===============================
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        // Verifica autenticação
+        if (localStorage.getItem('logado') !== 'true' || localStorage.getItem('perfil') !== 'Administrador') {
+            window.location.href = 'index.html';
+        }
+
+        inicializarDados();
+    </script>
+</body>
+</html>
