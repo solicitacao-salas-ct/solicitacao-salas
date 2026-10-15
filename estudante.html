@@ -257,9 +257,7 @@
                 if (!doc.exists || doc.data().status !== 'aprovado') {
                     // administrador sem documento em /usuarios? manda para o painel dele
                     try {
-                        const cfg = await db.collection('config').doc('admins').get();
-                        const admins = ((cfg.exists && cfg.data().emails) || []).map(e => e.toLowerCase());
-                        if (admins.includes(user.email.toLowerCase())) { window.location.replace('admin.html'); return; }
+                        if (await window.verificarAdmin(db, user)) { window.location.replace('admin.html'); return; }
                     } catch (_) {}
                     await auth.signOut();
                     window.location.replace('index.html');
