@@ -171,9 +171,7 @@
             if (!user || cadastrando) return;
             try {
                 // Admin? (lista de e-mails no documento config/admins — editável só pelo console)
-                const cfg = await db.collection('config').doc('admins').get();
-                const admins = ((cfg.exists && cfg.data().emails) || []).map(e => String(e).toLowerCase());
-                if (admins.includes((user.email || '').toLowerCase())) {
+                if (await window.verificarAdmin(db, user)) {
                     window.location.replace('admin.html');
                     return;
                 }
