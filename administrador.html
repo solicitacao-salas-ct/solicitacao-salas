@@ -203,10 +203,9 @@
         auth.onAuthStateChanged(async (user) => {
             if (saindo) return;
             if (!user) { window.location.replace('index.html'); return; }
-            let admins;
+            let ehAdmin;
             try {
-                const cfg = await db.collection('config').doc('admins').get();
-                admins = ((cfg.exists && cfg.data().emails) || []).map(e => String(e).toLowerCase());
+                ehAdmin = await window.verificarAdmin(db, user);
             } catch (e) {
                 // NÃO redireciona (isso gerava loop): mostra o motivo real
                 console.error(e);
@@ -214,7 +213,7 @@
                     '<br><small>Confira as regras do Firestore (arquivo firestore.rules).</small>');
                 return;
             }
-            if (!admins.includes((user.email || '').toLowerCase())) {
+            if (!ehAdmin) {
                 window.location.replace('index.html');   // não é admin: o index o leva ao painel de estudante
                 return;
             }
