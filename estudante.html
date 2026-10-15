@@ -74,14 +74,13 @@
         @keyframes sp { to { transform: rotate(360deg); } }
 
     </style>
-<base target="_blank">
 </head>
 <body>
     <div class="sidebar">
         <h2>🏫 Solicitação de Salas</h2>
-        <button class="sidebar-btn active" onclick="mostrarAba('solicitar', this)">📝 Nova Solicitação</button>
-        <button class="sidebar-btn" onclick="mostrarAba('acompanhar', this)">📋 Acompanhar Solicitações</button>
-        <button class="sidebar-btn" onclick="logout()">🚪 Sair / Logout</button>
+        <button class="sidebar-btn active" data-aba="solicitar">📝 Nova Solicitação</button>
+        <button class="sidebar-btn" data-aba="acompanhar">📋 Acompanhar Solicitações</button>
+        <button class="sidebar-btn" id="btn-logout" type="button">🚪 Sair / Logout</button>
         <div style="margin-top: 24px; font-size: 0.8rem; opacity: 0.7;">
             <p id="user-info">Carregando...</p>
             <p>Perfil: <strong>Estudante</strong></p>
@@ -120,7 +119,7 @@
                     </div>
                     <div class="form-group">
                         <label>Evento recorrente?</label>
-                        <select id="usa_fim" onchange="toggleRecorrente()">
+                        <select id="usa_fim">
                             <option value="nao">NÃO - Evento único</option>
                             <option value="sim">SIM - Evento recorrente</option>
                         </select>
@@ -166,7 +165,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Bloco de preferência:</label>
-                        <select id="bloco_pref" onchange="popularSalas()">
+                        <select id="bloco_pref">
                             <option value="">Qualquer bloco</option>
                         </select>
                     </div>
@@ -180,7 +179,7 @@
             </div>
 
             <div class="center-btn">
-                <button class="btn-primary" onclick="buscarSalas()">🔍 Buscar Salas Disponíveis</button>
+                <button class="btn-primary" id="btn-buscar" type="button">🔍 Buscar Salas Disponíveis</button>
             </div>
 
             <div id="alert"></div>
@@ -206,20 +205,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
 
     <script>
         // ==================================================================
-        // 1) MESMA CONFIG DO FIREBASE DO index.html
+        // 1) CONFIG DO FIREBASE (a mesma do index.html)
         // ==================================================================
-        const firebaseConfig = {
-              apiKey: "AIzaSyADL_CixdmBy6oNrAg6YMjyiFYXp73YGvY",
-              authDomain: "solicitacao-salas-ct-c652d.firebaseapp.com",
-              projectId: "solicitacao-salas-ct-c652d",
-              storageBucket: "solicitacao-salas-ct-c652d.firebasestorage.app",
-              messagingSenderId: "802787248552",
-              appId: "1:802787248552:web:dc50cdaa806e2d637ab59d"
-            };
-        firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(window.firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
@@ -238,34 +230,62 @@
         let SALAS = {};   // nome -> {NOME, CAPACIDADE, PROJETOR, AR, ANDAR, ACESSIBILIDADE, TIPO}
         let OCUP = {};    // nome -> {DIA: [[ini, fim, desc], ...]}
         let BUSCA = null; // resultado da última busca
+        let unsubMinhas = null;   // listener em tempo real das solicitações do usuário
+        let saindo = false;       // evita corrida entre logout e onAuthStateChanged
 
         document.getElementById('current-date').textContent =
             new Date().toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c =>
+                ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function diaPtDe(date) {
+            return DIA_ING_PT[date.toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()];
+        }
 
         // ==================================================================
         // 3) AUTENTICAÇÃO / INICIALIZAÇÃO
         // ==================================================================
         auth.onAuthStateChanged(async (user) => {
+            if (saindo) return;
             if (!user) { window.location.replace('index.html'); return; }
+            const st = document.getElementById('status-dados');
             try {
-                const doc = await db.collection('usuarios').doc(user.uid).get();
+                const ref = db.collection('usuarios').doc(user.uid);
+                const doc = await ref.get();
                 if (!doc.exists || doc.data().status !== 'aprovado') {
+                    // administrador sem documento em /usuarios? manda para o painel dele
+                    try {
+                        const cfg = await db.collection('config').doc('admins').get();
+                        const admins = ((cfg.exists && cfg.data().emails) || []).map(e => e.toLowerCase());
+                        if (admins.includes(user.email.toLowerCase())) { window.location.replace('admin.html'); return; }
+                    } catch (_) {}
                     await auth.signOut();
                     window.location.replace('index.html');
                     return;
                 }
                 USUARIO = {uid: user.uid, nome: doc.data().nome, email: user.email};
                 document.getElementById('user-info').textContent = USUARIO.nome + ' — ' + USUARIO.email;
-                await db.collection('usuarios').doc(user.uid)
-                        .update({ultimo_acesso: firebase.firestore.FieldValue.serverTimestamp()});
+
+                // não crítico: se falhar (regras), o resto do sistema continua funcionando
+                ref.update({ultimo_acesso: firebase.firestore.FieldValue.serverTimestamp()})
+                   .catch(e => console.warn('ultimo_acesso:', e.message));
+
+                iniciarMinhasSolicitacoes();   // independe da leitura dos Excel
                 await carregarDados();
-                carregarMinhasSolicitacoes();
             } catch (e) {
-                document.getElementById('status-dados').textContent = '❌ Erro: ' + e.message;
+                console.error(e);
+                st.textContent = '❌ Erro ao validar sessão: ' + e.message;
             }
         });
 
-        function logout() { auth.signOut().then(() => window.location.replace('index.html')); }
+        async function logout() {
+            saindo = true;
+            if (unsubMinhas) { try { unsubMinhas(); } catch (_) {} unsubMinhas = null; }
+            try { await auth.signOut(); } catch (e) { console.error('signOut:', e); }
+            window.location.replace('index.html');   // sempre redireciona, mesmo se signOut falhar
+        }
 
         // ==================================================================
         // 4) LEITURA DOS EXCELS (SALAS + MAPA)
@@ -286,6 +306,13 @@
             return new Date(y, m - 1, d);
         }
 
+        // lê uma coluna aceitando vários nomes possíveis de cabeçalho (ex.: "CAPACIDADE" ou "CAPAC.")
+        function pick(row, nomes) {
+            for (const n of nomes) if (row[n] !== undefined && row[n] !== null) return row[n];
+            return null;
+        }
+        const simNao = v => String(v ?? '').trim().toLowerCase() === 'sim';
+
         function resolverSala(nome) {
             nome = String(nome).trim();
             if (SALAS[nome]) return nome;
@@ -303,18 +330,19 @@
                 if (!rM.ok) throw new Error('não encontrei ' + ARQ_MAPA + ' no repositório');
 
                 // ---- SALAS ----
+                SALAS = {}; OCUP = {};
                 const wbS = XLSX.read(await rS.arrayBuffer(), {type: 'array'});
                 const rowsS = XLSX.utils.sheet_to_json(wbS.Sheets[wbS.SheetNames[0]], {defval: null});
                 rowsS.filter(r => r.SALAS && String(r.SALAS).trim() !== 'SALAS').forEach(r => {
                     const nome = String(r.SALAS).trim();
-                    const assento = String(r['ASSENTO'] || '').toLowerCase();
+                    const assento = String(pick(r, ['ASSENTO']) || '').toLowerCase();
                     SALAS[nome] = {
                         NOME: nome,
-                        CAPACIDADE: parseInt(r['CAPAC.']) || 0,
-                        PROJETOR: String(r['PROJETOR'] || '').trim().toLowerCase() === 'sim',
-                        AR: String(r['AR COND.'] || '').trim().toLowerCase() === 'sim',
-                        ANDAR: String(r['ANDAR'] || '').trim(),
-                        ACESSIBILIDADE: String(r['ACESSIB.'] || '').trim().toLowerCase() === 'sim',
+                        CAPACIDADE: parseInt(pick(r, ['CAPACIDADE', 'CAPAC.', 'CAPAC'])) || 0,
+                        PROJETOR: simNao(pick(r, ['PROJETOR'])),
+                        AR: simNao(pick(r, ['AR CONDICIONADO', 'AR COND.', 'AR COND'])),
+                        ANDAR: String(pick(r, ['ANDAR']) || '').trim(),
+                        ACESSIBILIDADE: simNao(pick(r, ['ACESSIBILIDADE', 'ACESSIB.', 'ACESSIB'])),
                         TIPO: (nome.toLowerCase().includes('lact') || assento.includes('lab'))
                               ? 'Laboratório de Informática'
                               : (nome.toLowerCase().includes('monitoria') ? 'Sala de Monitoria' : 'Sala de Aula')
@@ -329,7 +357,9 @@
                 rowsM.filter(r => r.SALA && r.DIAS && String(r.CODIGO).trim() !== 'CODIGO').forEach(r => {
                     const sala = resolverSala(r.SALA);
                     if (!sala) return;
-                    const dias = String(r.DIAS).split(/[;,\/\]+|\s+/)
+                    // CORREÇÃO: a regex original tinha barras invertidas duplicadas -> SyntaxError que
+                    // derrubava TODO o script desta página (logout, abas, buscas...).
+                    const dias = String(r.DIAS).split(/[;,\/\s]+/)
                         .map(t => t.trim().toUpperCase()).filter(t => DIAS_SEMANA.includes(t));
                     const ini = parseHora(r['HORARIO INICIO']);
                     const fim = parseHora(r['HORARIO FINAL']);
@@ -338,29 +368,34 @@
                     dias.forEach(d => { OCUP[sala][d].push([ini, fim, desc]); nOcup++; });
                 });
 
-                // ---- SOLICITAÇÕES APROVADAS também ocupam a sala ----
-                const aprov = await db.collection('solicitacoes').where('status', '==', 'APROVADA').get();
-                aprov.docs.forEach(doc => {
-                    const s = doc.data();
-                    const sala = resolverSala(s.sala);
-                    if (!sala) return;
-                    const dIni = parseDataLocal(s.data_ini), dFim = parseDataLocal(s.data_fim) || dIni;
-                    const dias = (Array.isArray(s.dias) ? s.dias : String(s.dias || '').split(','))
-                        .map(t => t.trim().toUpperCase());
-                    if (!dIni || !dFim) return;
-                    for (let d = new Date(dIni); d <= dFim; d.setDate(d.getDate() + 1)) {
-                        const diaPt = DIA_ING_PT[d.toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()];
-                        if (dias.includes(diaPt)) {
-                            OCUP[sala][diaPt].push([s.h_ini, s.h_fim,
-                                `SOLICITAÇÃO APROVADA - ${s.evento} (${s.nome || ''})`]);
+                // ---- SOLICITAÇÕES APROVADAS também ocupam a sala (falha aqui não é fatal) ----
+                try {
+                    const aprov = await db.collection('solicitacoes').where('status', '==', 'APROVADA').get();
+                    aprov.docs.forEach(doc => {
+                        const s = doc.data();
+                        const sala = resolverSala(s.sala);
+                        if (!sala) return;
+                        const dIni = parseDataLocal(s.data_ini), dFim = parseDataLocal(s.data_fim) || dIni;
+                        const dias = (Array.isArray(s.dias) ? s.dias : String(s.dias || '').split(','))
+                            .map(t => t.trim().toUpperCase());
+                        if (!dIni || !dFim) return;
+                        for (let d = new Date(dIni); d <= dFim; d.setDate(d.getDate() + 1)) {
+                            const diaPt = diaPtDe(d);
+                            if (dias.includes(diaPt) && OCUP[sala][diaPt]) {
+                                OCUP[sala][diaPt].push([s.h_ini, s.h_fim,
+                                    `SOLICITAÇÃO APROVADA - ${s.evento} (${s.nome || ''})`]);
+                            }
                         }
-                    }
-                });
+                    });
+                } catch (e) {
+                    console.warn('Não foi possível ler solicitações aprovadas:', e.message);
+                }
 
                 popularBlocos();
                 st.textContent = `✅ Dados carregados: ${Object.keys(SALAS).length} salas, ${nOcup} aulas/eventos do mapa.`;
             } catch (e) {
-                st.innerHTML = '❌ ' + e.message + ' — verifique se os dois Excel estão no mesmo diretório desta página no repositório.';
+                console.error(e);
+                st.innerHTML = '❌ ' + esc(e.message) + ' — verifique se os dois Excel estão no mesmo diretório desta página no repositório.';
             }
         }
 
@@ -370,9 +405,8 @@
         function mostrarAba(aba, btn) {
             document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
             document.getElementById('aba-' + aba).classList.remove('hidden');
-            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            if (aba === 'acompanhar') carregarMinhasSolicitacoes();
+            document.querySelectorAll('.sidebar-btn[data-aba]').forEach(b =>
+                b.classList.toggle('active', b.dataset.aba === aba));
         }
 
         function toggleRecorrente() {
@@ -384,7 +418,7 @@
             const sel = document.getElementById('bloco_pref');
             const blocos = [...new Set(Object.keys(SALAS).map(n => n.split('-')[0].split(' ')[0]))].sort();
             sel.innerHTML = '<option value="">Qualquer bloco</option>' +
-                blocos.map(b => `<option value="${b}">${b}</option>`).join('');
+                blocos.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
             popularSalas();
         }
 
@@ -393,7 +427,7 @@
             const sel = document.getElementById('sala_pref');
             const nomes = Object.keys(SALAS).filter(n => !bloco || n.startsWith(bloco)).sort();
             sel.innerHTML = '<option value="">Qualquer sala</option>' +
-                nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+                nomes.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
         }
 
         function showAlert(msg, tipo) {
@@ -416,8 +450,7 @@
             const out = [];
             if (dataFim && dias && dias.length) {
                 for (let d = new Date(parseDataLocal(dataIni)); d <= parseDataLocal(dataFim); d.setDate(d.getDate() + 1)) {
-                    const diaPt = DIA_ING_PT[d.toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()];
-                    if (dias.includes(diaPt)) out.push(new Date(d));
+                    if (dias.includes(diaPtDe(d))) out.push(new Date(d));
                 }
             } else {
                 out.push(parseDataLocal(dataIni));
@@ -431,9 +464,6 @@
             const dataIni = document.getElementById('data_ini').value;
             const usaFim = document.getElementById('usa_fim').value;
             const dataFim = usaFim === 'sim' ? document.getElementById('data_fim').value : null;
-            const diasEvento = usaFim === 'sim'
-                ? [...document.getElementById('dias_evento').selectedOptions].map(o => o.value)
-                : [DIA_ING_PT[parseDataLocal(dataIni).toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()]];
             const hIni = document.getElementById('h_ini').value;
             const hFim = document.getElementById('h_fim').value;
             const blocoPref = document.getElementById('bloco_pref').value;
@@ -442,10 +472,20 @@
             const erros = [];
             if (!evento) erros.push('• Nome do evento é obrigatório');
             if (capacidade <= 0) erros.push('• Nº de participantes deve ser maior que zero');
+            if (!dataIni) erros.push('• Informe a data inicial');
+            if (!hIni || !hFim) erros.push('• Informe horário de início e término');
+            if (erros.length) { showAlert('⚠️ Corrija: ' + erros.join(' '), 'error'); return; }
+
+            const diasEvento = usaFim === 'sim'
+                ? [...document.getElementById('dias_evento').selectedOptions].map(o => o.value)
+                : [diaPtDe(parseDataLocal(dataIni))];
             if (usaFim === 'sim' && (!dataFim || !diasEvento.length)) erros.push('• Informe data final e dias da semana');
+            if (usaFim === 'sim' && dataFim && dataFim < dataIni) erros.push('• Data final deve ser posterior à inicial');
             if (hhmmToMin(hFim) <= hhmmToMin(hIni)) erros.push('• Horário de término deve ser posterior ao de início');
+            if (diasEvento[0] === 'DOMINGO') erros.push('• Não há reservas aos domingos');
             if (!Object.keys(SALAS).length) erros.push('• Dados das salas ainda não carregaram — aguarde');
             if (erros.length) { showAlert('⚠️ Corrija: ' + erros.join(' '), 'error'); return; }
+            document.getElementById('alert').className = ''; document.getElementById('alert').innerHTML = '';
 
             const datas = datasDoEvento(dataIni, dataFim, diasEvento);
             const disp = [];
@@ -453,10 +493,7 @@
                 if (capacidade > sala.CAPACIDADE) continue;
                 if (blocoPref && !nome.startsWith(blocoPref)) continue;
                 if (salaPref && nome !== salaPref) continue;
-                const conflito = datas.some(d => {
-                    const diaPt = DIA_ING_PT[d.toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()];
-                    return temConflito(OCUP[nome][diaPt] || [], hIni, hFim);
-                });
+                const conflito = datas.some(d => temConflito((OCUP[nome] || {})[diaPtDe(d)] || [], hIni, hFim));
                 if (!conflito) disp.push(sala);
             }
             disp.sort((a, b) => a.NOME.localeCompare(b.NOME));
@@ -471,8 +508,8 @@
             let periodo = parseDataLocal(b.dataIni).toLocaleDateString('pt-BR');
             if (b.dataFim) periodo += ' a ' + parseDataLocal(b.dataFim).toLocaleDateString('pt-BR');
             document.getElementById('info-evento').innerHTML =
-                `<b>📌 Evento:</b> ${b.evento} | <b>👥 Participantes:</b> ${b.capacidade}<br>` +
-                `<b>📅 Período:</b> ${periodo} | <b>📆 Dias:</b> ${b.dias.join(', ')}<br>` +
+                `<b>📌 Evento:</b> ${esc(b.evento)} | <b>👥 Participantes:</b> ${b.capacidade}<br>` +
+                `<b>📅 Período:</b> ${periodo} | <b>📆 Dias:</b> ${esc(b.dias.join(', '))}<br>` +
                 `<b>⏰ Horário:</b> ${b.hIni} - ${b.hFim}`;
 
             const cont = document.getElementById('salas-container');
@@ -480,17 +517,17 @@
                 cont.innerHTML = `<div class="alert warning">⚠️ <b>Nenhuma sala disponível</b> para os critérios informados. Tente ajustar a capacidade, horário ou período.</div>`;
                 return;
             }
-            cont.innerHTML = `<div class="alert success">✅ <b>${disp.length} sala(s) disponível(is)</b></div>` +
+            cont.innerHTML = `<div class="alert success" style="grid-column:1/-1">✅ <b>${disp.length} sala(s) disponível(is)</b></div>` +
                 disp.map(s => {
                     const rec = [];
                     if (s.PROJETOR) rec.push('🎥 Projetor');
                     if (s.AR) rec.push('❄️ Ar-cond.');
                     if (s.ACESSIBILIDADE) rec.push('♿ Acessível');
                     return `<div class="sala-item">
-                        <h4>📍 ${s.NOME}</h4>
-                        <p>${s.TIPO} · ${s.ANDAR}<br>👥 ${s.CAPACIDADE} lugares<br>${rec.join(' · ') || 'Sem recursos extras'}</p>
+                        <h4>📍 ${esc(s.NOME)}</h4>
+                        <p>${esc(s.TIPO)} · ${esc(s.ANDAR)}<br>👥 ${s.CAPACIDADE} lugares<br>${rec.join(' · ') || 'Sem recursos extras'}</p>
                         <span class="badge badge-success">✅ Disponível</span><br><br>
-                        <button class="btn-success" onclick="solicitarSala('${s.NOME}')">📨 Solicitar ${s.NOME}</button>
+                        <button class="btn-success" data-sala="${esc(s.NOME)}">📨 Solicitar ${esc(s.NOME)}</button>
                     </div>`;
                 }).join('');
             cont.scrollIntoView({behavior: 'smooth'});
@@ -499,8 +536,9 @@
         // ==================================================================
         // 7) ENVIAR SOLICITAÇÃO / ACOMPANHAR
         // ==================================================================
-        async function solicitarSala(nomeSala) {
+        async function solicitarSala(nomeSala, btn) {
             if (!USUARIO || !BUSCA) return;
+            if (btn) btn.disabled = true;
             try {
                 await db.collection('solicitacoes').add({
                     uid: USUARIO.uid, nome: USUARIO.nome, email: USUARIO.email,
@@ -510,44 +548,75 @@
                     status: 'PENDENTE',
                     criado_em: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                showAlert(`✅ Solicitação da sala <b>${nomeSala}</b> enviada! ` +
+                showAlert(`✅ Solicitação da sala <b>${esc(nomeSala)}</b> enviada! ` +
                           `Acompanhe o status em '📋 Acompanhar Solicitações'.`, 'success');
                 document.getElementById('resultado-salas').classList.add('hidden');
                 BUSCA = null;
             } catch (e) {
-                showAlert('❌ Erro ao enviar solicitação: ' + e.message, 'error');
+                if (btn) btn.disabled = false;
+                showAlert('❌ Erro ao enviar solicitação: ' + esc(e.message), 'error');
             }
         }
 
-        async function carregarMinhasSolicitacoes() {
-            const cont = document.getElementById('lista-minhas');
+        const BADGE = {PENDENTE: '<span class="badge badge-warning">🟡 PENDENTE</span>',
+                       APROVADA: '<span class="badge badge-success">🟢 APROVADA</span>',
+                       RECUSADA: '<span class="badge badge-danger">🔴 RECUSADA</span>'};
+        const fmtISO = s => s ? parseDataLocal(s).toLocaleDateString('pt-BR') : '';
+
+        // Listener em tempo real: o status muda na tela assim que o admin aprova/recusa.
+        function iniciarMinhasSolicitacoes() {
             if (!USUARIO) return;
-            try {
-                const snap = await db.collection('solicitacoes')
-                                     .where('uid', '==', USUARIO.uid).get();
+            if (unsubMinhas) unsubMinhas();
+            const cont = document.getElementById('lista-minhas');
+            unsubMinhas = db.collection('solicitacoes').where('uid', '==', USUARIO.uid).onSnapshot(snap => {
                 const rows = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 rows.sort((a, b) => (b.criado_em?.toMillis?.() || 0) - (a.criado_em?.toMillis?.() || 0));
                 if (!rows.length) {
                     cont.innerHTML = '<div class="alert info">Você ainda não fez solicitações.</div>';
                     return;
                 }
-                const BADGE = {PENDENTE: '<span class="badge badge-warning">🟡 PENDENTE</span>',
-                               APROVADA: '<span class="badge badge-success">🟢 APROVADA</span>',
-                               RECUSADA: '<span class="badge badge-danger">🔴 RECUSADA</span>'};
                 cont.innerHTML = rows.map(s => {
-                    const dias = Array.isArray(s.dias) ? s.dias.join(', ') : s.dias;
+                    const dias = Array.isArray(s.dias) ? s.dias.join(', ') : (s.dias || '');
                     const periodo = (s.data_fim && s.data_fim !== s.data_ini)
-                        ? `${s.data_ini} → ${s.data_fim}` : s.data_ini;
+                        ? `${fmtISO(s.data_ini)} → ${fmtISO(s.data_fim)}` : fmtISO(s.data_ini);
+                    const cancelar = s.status === 'PENDENTE'
+                        ? `<button class="btn-danger" style="margin-top:8px;" data-cancelar="${esc(s.id)}">🗑️ Cancelar solicitação</button>` : '';
                     return `<div class="solic-card">
-                        <b>${s.evento}</b> — Sala <b>${s.sala}</b><br>
+                        <b>${esc(s.evento)}</b> — Sala <b>${esc(s.sala)}</b><br>
                         <span style="color:#5d6d7e; font-size:0.85rem;">
-                        📅 ${periodo} (${dias}) · ⏰ ${s.h_ini}–${s.h_fim} · 👥 ${s.capacidade}</span><br>
-                        ${BADGE[s.status] || s.status}</div>`;
+                        📅 ${periodo} (${esc(dias)}) · ⏰ ${esc(s.h_ini)}–${esc(s.h_fim)} · 👥 ${esc(s.capacidade)}</span><br>
+                        ${BADGE[s.status] || esc(s.status)}<br>${cancelar}</div>`;
                 }).join('');
-            } catch (e) {
-                cont.innerHTML = `<div class="alert error">Erro: ${e.message}</div>`;
-            }
+            }, err => {
+                console.error(err);
+                cont.innerHTML = `<div class="alert error">Não foi possível carregar suas solicitações: ${esc(err.message)}
+                    <br><small>Se for "permission-denied", publique as regras do arquivo firestore.rules.</small></div>`;
+            });
         }
+
+        async function cancelarSolicitacao(id) {
+            if (!confirm('Cancelar esta solicitação?')) return;
+            try { await db.collection('solicitacoes').doc(id).delete(); }
+            catch (e) { alert('Erro ao cancelar: ' + e.message); }
+        }
+
+        // ==================================================================
+        // 8) LIGAÇÃO DOS EVENTOS (sem onclick inline)
+        // ==================================================================
+        document.querySelectorAll('.sidebar-btn[data-aba]').forEach(b =>
+            b.addEventListener('click', () => mostrarAba(b.dataset.aba, b)));
+        document.getElementById('btn-logout').addEventListener('click', logout);
+        document.getElementById('btn-buscar').addEventListener('click', buscarSalas);
+        document.getElementById('usa_fim').addEventListener('change', toggleRecorrente);
+        document.getElementById('bloco_pref').addEventListener('change', popularSalas);
+        document.getElementById('salas-container').addEventListener('click', e => {
+            const b = e.target.closest('[data-sala]');
+            if (b) solicitarSala(b.dataset.sala, b);
+        });
+        document.getElementById('lista-minhas').addEventListener('click', e => {
+            const b = e.target.closest('[data-cancelar]');
+            if (b) cancelarSolicitacao(b.dataset.cancelar);
+        });
     </script>
 </body>
 </html>
