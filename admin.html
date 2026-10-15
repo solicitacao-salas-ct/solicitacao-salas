@@ -172,6 +172,24 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Garantia: se o firebase-config.js publicado for uma versão antiga (sem verificarAdmin)
+        // ou estiver em cache, a página usa esta cópia e continua funcionando.
+        if (typeof window.verificarAdmin !== 'function') {
+            window.verificarAdmin = async function (db, user) {
+                const email = (user.email || '').trim().toLowerCase();
+                try {
+                    const cfg = await db.collection('config').doc('admins').get();
+                    if (cfg.exists) {
+                        const d = cfg.data();
+                        const lista = [].concat(d.emails || [], d.email || []).map(e => String(e).trim().toLowerCase());
+                        if (lista.includes(email)) return true;
+                    }
+                } catch (e) { console.warn('config/admins:', e.message); }
+                const u = await db.collection('usuarios').doc(user.uid).get();
+                return u.exists && u.data().perfil === 'admin' && u.data().status === 'aprovado';
+            };
+        }
+
         const BADGE = {PENDENTE: '<span class="badge badge-warning">🟡 PENDENTE</span>',
                        APROVADA: '<span class="badge badge-success">🟢 APROVADA</span>',
                        RECUSADA: '<span class="badge badge-danger">🔴 RECUSADA</span>'};
