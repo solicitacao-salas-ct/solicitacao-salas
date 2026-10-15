@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitação de Reserva de Salas – CT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh;
+            background: linear-gradient(180deg, #1a5276 0%, #1a3a5c 100%); color: white;
+            padding: 24px; overflow-y: auto; z-index: 100; }
+        .sidebar h2 { font-size: 1.1rem; margin-bottom: 24px; padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .sidebar-btn { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px;
+            cursor: pointer; font-size: 0.9rem; transition: all 0.3s; margin-bottom: 8px; text-align: left; }
+        .sidebar-btn:hover { background: rgba(255,255,255,0.2); }
+        .sidebar-btn.active { background: rgba(255,255,255,0.3); font-weight: 600; }
+        .main-content { margin-left: 260px; padding: 32px; max-width: 1200px; }
+        .header { margin-bottom: 32px; }
+        .header h1 { font-size: 2rem; color: #1a5276; margin-bottom: 4px; }
+        .header p { color: #5d6d7e; font-size: 1.05rem; }
+        .card { background: white; border-radius: 12px; padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; border-left: 4px solid #1a5276; }
+        .card h3 { font-size: 1.1rem; color: #1a5276; margin-bottom: 20px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; color: #374151; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 0.9rem; font-family: inherit; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #1a5276;
+            box-shadow: 0 0 0 3px rgba(26,82,118,0.1); }
+        .btn-primary { padding: 12px 32px; background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(26,82,118,0.25); }
+        .btn-success { padding: 10px 20px; background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(39,174,96,0.25); }
+        .btn-danger { padding: 10px 20px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; }
+        .alert { padding: 14px 18px; border-radius: 10px; margin: 16px 0; font-size: 0.9rem; }
+        .alert.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .alert.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .alert.warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .alert.info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .info-box { background: #eaf2f8; border-radius: 10px; padding: 16px; margin: 16px 0; font-size: 0.9rem; line-height: 1.6; }
+        .sala-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .sala-item { background: #e8f6f3; border-radius: 8px; padding: 16px; border-left: 4px solid #1abc9c; }
+        .sala-item h4 { color: #1a5276; margin-bottom: 4px; }
+        .sala-item p { color: #5d6d7e; font-size: 0.85rem; margin-bottom: 8px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f8fafc; font-weight: 600; color: #374151; }
+        tr:hover { background: #f8fafc; }
+        .hidden { display: none !important; }
+        .center-btn { display: flex; justify-content: center; margin: 24px 0; }
+        .divider { height: 1px; background: #e5e7eb; margin: 24px 0; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .solic-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; background: white; }
+        .tabs-nav { display: flex; gap: 8px; margin-bottom: 24px; }
+        .tabs-nav button { flex: 0 0 auto; }
+        .spin { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(26,82,118,0.2);
+            border-radius: 50%; border-top-color: #1a5276; animation: sp 1s linear infinite; vertical-align: middle; }
+        @keyframes sp { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🏫 Solicitação de Salas</h2>
+        <button class="sidebar-btn active" data-aba="solicitar">📝 Nova Solicitação</button>
+        <button class="sidebar-btn" data-aba="acompanhar">📋 Acompanhar Solicitações</button>
+        <button class="sidebar-btn" id="btn-logout" type="button">🚪 Sair / Logout</button>
+        <div style="margin-top: 24px; font-size: 0.8rem; opacity: 0.7;">
+            <p id="user-info">Carregando...</p>
+            <p>Perfil: <strong>Estudante</strong></p>
+            <p id="current-date"></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🏫 Solicitação de Reserva de Salas – CT</h1>
+            <p id="status-dados">⏳ Carregando dados das salas...</p>
+        </div>
+
+        <!-- ================= ABA 1: NOVA SOLICITAÇÃO ================= -->
+        <div id="aba-solicitar" class="aba">
+            <div class="card">
+                <h3>📋 Dados do Evento</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome do evento: *</label>
+                        <input type="text" id="evento" placeholder="Ex: Reunião de Coordenação">
+                    </div>
+                    <div class="form-group">
+                        <label>Número de participantes: *</label>
+                        <input type="number" id="capacidade" value="30" min="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📅 Período do Evento</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data inicial: *</label>
+                        <input type="date" id="data_ini" value="2026-08-10">
+                    </div>
+                    <div class="form-group">
+                        <label>Evento recorrente?</label>
+                        <select id="usa_fim">
+                            <option value="nao">NÃO - Evento único</option>
+                            <option value="sim">SIM - Evento recorrente</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="recorrente-fields" class="hidden">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Data final: *</label>
+                            <input type="date" id="data_fim" value="2026-12-11">
+                        </div>
+                        <div class="form-group">
+                            <label>Dias da semana: *</label>
+                            <select id="dias_evento" multiple size="4">
+                                <option value="SEGUNDA" selected>SEGUNDA</option>
+                                <option value="TERÇA">TERÇA</option>
+                                <option value="QUARTA">QUARTA</option>
+                                <option value="QUINTA">QUINTA</option>
+                                <option value="SEXTA">SEXTA</option>
+                                <option value="SÁBADO">SÁBADO</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⏰ Horário do Evento</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Horário de início: *</label>
+                        <input type="time" id="h_ini" value="08:00">
+                    </div>
+                    <div class="form-group">
+                        <label>Horário de término: *</label>
+                        <input type="time" id="h_fim" value="10:00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🏢 Preferência de Sala (Opcional)</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bloco de preferência:</label>
+                        <select id="bloco_pref">
+                            <option value="">Qualquer bloco</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sala específica:</label>
+                        <select id="sala_pref">
+                            <option value="">Qualquer sala</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="center-btn">
+                <button class="btn-primary" id="btn-buscar" type="button">🔍 Buscar Salas Disponíveis</button>
+            </div>
+
+            <div id="alert"></div>
+
+            <div id="resultado-salas" class="hidden">
+                <div class="divider"></div>
+                <h2 style="color: #1a5276; margin-bottom: 16px;">✅ Salas Disponíveis</h2>
+                <div id="info-evento" class="info-box"></div>
+                <div id="salas-container" class="sala-grid"></div>
+            </div>
+        </div>
+
+        <!-- ================= ABA 2: ACOMPANHAR ================= -->
+        <div id="aba-acompanhar" class="aba hidden">
+            <div class="card">
+                <h3>📋 Minhas Solicitações</h3>
+                <div id="alert-acomp"></div>
+                <div id="lista-minhas"><p><span class="spin"></span> Carregando...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        // ==================================================================
+        // 1) CONFIG DO FIREBASE (a mesma do index.html)
+        // ==================================================================
+        firebase.initializeApp(window.firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Garantia: se o firebase-config.js publicado for uma versão antiga (sem verificarAdmin)
+        // ou estiver em cache, a página usa esta cópia e continua funcionando.
+        if (typeof window.verificarAdmin !== 'function') {
+            window.verificarAdmin = async function (db, user) {
+                const email = (user.email || '').trim().toLowerCase();
+                try {
+                    const cfg = await db.collection('config').doc('admins').get();
+                    if (cfg.exists) {
+                        const d = cfg.data();
+                        const lista = [].concat(d.emails || [], d.email || []).map(e => String(e).trim().toLowerCase());
+                        if (lista.includes(email)) return true;
+                    }
+                } catch (e) { console.warn('config/admins:', e.message); }
+                const u = await db.collection('usuarios').doc(user.uid).get();
+                return u.exists && u.data().perfil === 'admin' && u.data().status === 'aprovado';
+            };
+        }
+
+        // ==================================================================
+        // 2) CONSTANTES E ESTADO GLOBAL
+        // ==================================================================
+        const ARQ_SALAS = '1 SALAS - 2026_2.xlsx';
+        const ARQ_MAPA = '1 mapa salas 2026-2 - E.xlsm';
+
+        const DIAS_SEMANA = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO"];
+        const DIA_ING_PT = {'MONDAY':'SEGUNDA','TUESDAY':'TERÇA','WEDNESDAY':'QUARTA',
+                            'THURSDAY':'QUINTA','FRIDAY':'SEXTA','SATURDAY':'SÁBADO','SUNDAY':'DOMINGO'};
+        const ALIAS_SALA = {'SALA DE MONITORIA': '717-Monitoria', 'MONITORIA': '717-Monitoria'};
+
+        let USUARIO = null;
+        let SALAS = {};   // nome -> {NOME, CAPACIDADE, PROJETOR, AR, ANDAR, ACESSIBILIDADE, TIPO}
+        let OCUP = {};    // nome -> {DIA: [[ini, fim, desc], ...]}
+        let BUSCA = null; // resultado da última busca
+        let unsubMinhas = null;   // listener em tempo real das solicitações do usuário
+        let saindo = false;       // evita corrida entre logout e onAuthStateChanged
+
+        document.getElementById('current-date').textContent =
+            new Date().toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c =>
+                ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function diaPtDe(date) {
+            return DIA_ING_PT[date.toLocaleDateString('en-US', {weekday: 'long'}).toUpperCase()];
+        }
+
+        // ==================================================================
+        // 3) AUTENTICAÇÃO / INICIALIZAÇÃO
+        // ==================================================================
+        auth.onAuthStateChanged(async (user) => {
+            if (saindo) return;
+            if (!user) { window.location.replace('index.html'); return; }
+            const st = document.getElementById('status-dados');
+            try {
+                const ref = db.collection('usuarios').doc(user.uid);
+                const doc = await ref.get();
+                if (!doc.exists || doc.data().status !== 'aprovado') {
+                    // administrador sem documento em /usuarios? manda para o painel dele
+                    try {
+                        if (await window.verificarAdmin(db, user)) { window.location.replace('admin.html'); return; }
+                    } catch (_) {}
+                    await auth.signOut();
+                    window.location.replace('index.html');
+                    return;
+                }
+                USUARIO = {uid: user.uid, nome: doc.data().nome, email: user.email};
+                document.getElementById('user-info').textContent = USUARIO.nome + ' — ' + USUARIO.email;
+
+                // não crítico: se falhar (regras), o resto do sistema continua funcionando
+                ref.update({ultimo_acesso: firebase.firestore.FieldValue.serverTimestamp()})
+                   .catch(e => console.warn('ultimo_acesso:', e.message));
+
+                iniciarMinhasSolicitacoes();   // independe da leitura dos Excel
+                await carregarDados();
+            } catch (e) {
+                console.error(e);
+                st.textContent = '❌ Erro ao validar sessão: ' + e.message;
+            }
+        });
+
+        async function logout() {
+            saindo = true;
+            if (unsubMinhas) { try { unsubMinhas(); } catch (_) {} unsubMinhas = null; }
+            try { await auth.signOut(); } catch (e) { console.error('signOut:', e); }
+            window.location.replace('index.html');   // sempre redireciona, mesmo se signOut falhar
+        }
+
+        // ==================================================================
+        // 4) LEITURA DOS EXCELS (SALAS + MAPA)
+        // ==================================================================
+        function parseHora(v) {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'number' && isFinite(v)) {
+                const min = Math.round(v * 24 * 60);
+                return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+            }
+            const m = String(v).match(/(\d{1,2}):(\d{2})/);
+            return m ? m[1].padStart(2, '0') + ':' + m[2] : null;
+        }
+
+        function parseDataLocal(s) {
+            if (!s) return null;
+            const [y, m, d] = s.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        // lê uma coluna aceitando vários nomes possíveis de cabeçalho (ex.: "CAPACIDADE" ou "CAPAC.")
+        function pick(row, nomes) {
+            for (const n of nomes) if (row[n] !== undefined && row[n] !== null) return row[n];
+            return null;
+        }
+        const simNao = v => String(v ?? '').trim().toLowerCase() === 'sim';
+
+        function resolverSala(nome) {
+            nome = String(nome).trim();
+            if (SALAS[nome]) return nome;
+            if (ALIAS_SALA[nome.toUpperCase()] && SALAS[ALIAS_SALA[nome.toUpperCase()]])
+                return ALIAS_SALA[nome.toUpperCase()];
+            const cand = Object.keys(SALAS).filter(k => nome.includes(k));
+            return cand.length ? cand.sort((a, b) => b.length - a.length)[0] : null;
+        }
+
+        async function carregarDados() {
+            const st = document.getElementById('status-dados');
+            try {
+                const [rS, rM] = await Promise.all([fetch(encodeURI(ARQ_SALAS)), fetch(encodeURI(ARQ_MAPA))]);
+                if (!rS.ok) throw new Error('não encontrei ' + ARQ_SALAS + ' no repositório');
+                if (!rM.ok) throw new Error('não encontrei ' + ARQ_MAPA + ' no repositório');
+
+                // ---- SALAS ----
+                SALAS = {}; OCUP = {};
+                const wbS = XLSX.read(await rS.arrayBuffer(), {type: 'array'});
+                const rowsS = XLSX.utils.sheet_to_json(wbS.Sheets[wbS.SheetNames[0]], {defval: null});
+                rowsS.filter(r => r.SALAS && String(r.SALAS).trim() !== 'SALAS').forEach(r => {
+                    const nome = String(r.SALAS).trim();
+                    const assento = String(pick(r, ['ASSENTO']) || '').toLowerCase();
+                    SALAS[nome] = {
+                        NOME: nome,
+                        CAPACIDADE: parseInt(pick(r, ['CAPACIDADE', 'CAPAC.', 'CAPAC'])) || 0,
+                        PROJETOR: simNao(pick(r, ['PROJETOR'])),
+                        AR: simNao(pick(r, ['AR CONDICIONADO', 'AR COND.', 'AR COND'])),
+                        ANDAR: String(pick(r, ['ANDAR']) || '').trim(),
+                        ACESSIBILIDADE: simNao(pick(r, ['ACESSIBILIDADE', 'ACESSIB.', 'ACESSIB'])),
+                        TIPO: (nome.toLowerCase().includes('lact') || assento.includes('lab'))
+                              ? 'Laboratório de Informática'
+                              : (nome.toLowerCase().includes('monitoria') ? 'Sala de Monitoria' : 'Sala de Aula')
+                    };
+                    OCUP[nome] = Object.fromEntries(DIAS_SEMANA.map(d => [d, []]));
+                });
+
+                // ---- MAPA DE SALAS (ocupação) ----
+                const wbM = XLSX.read(await rM.arrayBuffer(), {type: 'array'});
+                const rowsM = XLSX.utils.sheet_to_json(wbM.Sheets['Planilha_Linear'], {defval: null});
+                let nOcup = 0;
+                rowsM.filter(r => r.SALA && r.DIAS && String(r.CODIGO).trim() !== 'CODIGO').forEach(r => {
+                    const sala = resolverSala(r.SALA);
+                    if (!sala) return;
+                    // CORREÇÃO: a regex original tinha barras invertidas duplicadas -> SyntaxError que
+                    // derrubava TODO o script desta página (logout, abas, buscas...).
+                    const dias = String(r.DIAS).split(/[;,\/\s]+/)
+                        .map(t => t.trim().toUpperCase()).filter(t => DIAS_SEMANA.includes(t));
+                    const ini = parseHora(r['HORARIO INICIO']);
+                    const fim = parseHora(r['HORARIO FINAL']);
+                    if (!dias.length || !ini || !fim) return;
+                    const desc = [r.CODIGO, r.DISCIPLINA, r.TURMA, r.PROFESSOR].filter(Boolean).join(' - ');
+                    dias.forEach(d => { OCUP[sala][d].push([ini, fim, desc]); nOcup++; });
+                });
+
+                // ---- SOLICITAÇÕES APROVADAS também ocupam a sala (falha aqui não é fatal) ----
+                try {
+                    const aprov = await db.collection('solicitacoes').where('status', '==', 'APROVADA').get();
+                    aprov.docs.forEach(doc => {
+                        const s = doc.data();
+                        const sala = resolverSala(s.sala);
+                        if (!sala) return;
+                        const dIni = parseDataLocal(s.data_ini), dFim = parseDataLocal(s.data_fim) || dIni;
+                        const dias = (Array.isArray(s.dias) ? s.dias : String(s.dias || '').split(','))
+                            .map(t => t.trim().toUpperCase());
+                        if (!dIni || !dFim) return;
+                        for (let d = new Date(dIni); d <= dFim; d.setDate(d.getDate() + 1)) {
+                            const diaPt = diaPtDe(d);
+                            if (dias.includes(diaPt) && OCUP[sala][diaPt]) {
+                                OCUP[sala][diaPt].push([s.h_ini, s.h_fim,
+                                    `SOLICITAÇÃO APROVADA - ${s.evento} (${s.nome || ''})`]);
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Não foi possível ler solicitações aprovadas:', e.message);
+                }
+
+                popularBlocos();
+                st.textContent = `✅ Dados carregados: ${Object.keys(SALAS).length} salas, ${nOcup} aulas/eventos do mapa.`;
+            } catch (e) {
+                console.error(e);
+                st.innerHTML = '❌ ' + esc(e.message) + ' — verifique se os dois Excel estão no mesmo diretório desta página no repositório.';
+            }
+        }
+
+        // ==================================================================
+        // 5) INTERFACE
+        // ==================================================================
+        function mostrarAba(aba, btn) {
+            document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
+            document.getElementById('aba-' + aba).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-btn[data-aba]').forEach(b =>
+                b.classList.toggle('active', b.dataset.aba === aba));
+        }
+
+        function toggleRecorrente() {
+            document.getElementById('recorrente-fields').classList.toggle('hidden',
+                document.getElementById('usa_fim').value !== 'sim');
+        }
+
+        function popularBlocos() {
+            const sel = document.getElementById('bloco_pref');
+            const blocos = [...new Set(Object.keys(SALAS).map(n => n.split('-')[0].split(' ')[0]))].sort();
+            sel.innerHTML = '<option value="">Qualquer bloco</option>' +
+                blocos.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+            popularSalas();
+        }
+
+        function popularSalas() {
+            const bloco = document.getElementById('bloco_pref').value;
+            const sel = document.getElementById('sala_pref');
+            const nomes = Object.keys(SALAS).filter(n => !bloco || n.startsWith(bloco)).sort();
+            sel.innerHTML = '<option value="">Qualquer sala</option>' +
+                nomes.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        }
+
+        function showAlert(msg, tipo) {
+            const a = document.getElementById('alert');
+            a.innerHTML = msg;
+            a.className = 'alert ' + tipo;
+        }
+
+        // ==================================================================
+        // 6) DISPONIBILIDADE
+        // ==================================================================
+        function hhmmToMin(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+
+        function temConflito(intervalos, hIni, hFim) {
+            const a = hhmmToMin(hIni), b = hhmmToMin(hFim);
+            return intervalos.some(([i, f]) => Math.max(a, hhmmToMin(i)) < Math.min(b, hhmmToMin(f)));
+        }
+
+        function datasDoEvento(dataIni, dataFim, dias) {
+            const out = [];
+            if (dataFim && dias && dias.length) {
+                for (let d = new Date(parseDataLocal(dataIni)); d <= parseDataLocal(dataFim); d.setDate(d.getDate() + 1)) {
+                    if (dias.includes(diaPtDe(d))) out.push(new Date(d));
+                }
+            } else {
+                out.push(parseDataLocal(dataIni));
+            }
+            return out;
+        }
+
+        function buscarSalas() {
+            const evento = document.getElementById('evento').value.trim();
+            const capacidade = parseInt(document.getElementById('capacidade').value) || 0;
+            const dataIni = document.getElementById('data_ini').value;
+            const usaFim = document.getElementById('usa_fim').value;
+            const dataFim = usaFim === 'sim' ? document.getElementById('data_fim').value : null;
+            const hIni = document.getElementById('h_ini').value;
+            const hFim = document.getElementById('h_fim').value;
+            const blocoPref = document.getElementById('bloco_pref').value;
+            const salaPref = document.getElementById('sala_pref').value;
+
+            const erros = [];
+            if (!evento) erros.push('• Nome do evento é obrigatório');
+            if (capacidade <= 0) erros.push('• Nº de participantes deve ser maior que zero');
+            if (!dataIni) erros.push('• Informe a data inicial');
+            if (!hIni || !hFim) erros.push('• Informe horário de início e término');
+            if (erros.length) { showAlert('⚠️ Corrija: ' + erros.join(' '), 'error'); return; }
+
+            const diasEvento = usaFim === 'sim'
+                ? [...document.getElementById('dias_evento').selectedOptions].map(o => o.value)
+                : [diaPtDe(parseDataLocal(dataIni))];
+            if (usaFim === 'sim' && (!dataFim || !diasEvento.length)) erros.push('• Informe data final e dias da semana');
+            if (usaFim === 'sim' && dataFim && dataFim < dataIni) erros.push('• Data final deve ser posterior à inicial');
+            if (hhmmToMin(hFim) <= hhmmToMin(hIni)) erros.push('• Horário de término deve ser posterior ao de início');
+            if (diasEvento[0] === 'DOMINGO') erros.push('• Não há reservas aos domingos');
+            if (!Object.keys(SALAS).length) erros.push('• Dados das salas ainda não carregaram — aguarde');
+            if (erros.length) { showAlert('⚠️ Corrija: ' + erros.join(' '), 'error'); return; }
+            document.getElementById('alert').className = ''; document.getElementById('alert').innerHTML = '';
+
+            const datas = datasDoEvento(dataIni, dataFim, diasEvento);
+            const disp = [];
+            for (const [nome, sala] of Object.entries(SALAS)) {
+                if (capacidade > sala.CAPACIDADE) continue;
+                if (blocoPref && !nome.startsWith(blocoPref)) continue;
+                if (salaPref && nome !== salaPref) continue;
+                const conflito = datas.some(d => temConflito((OCUP[nome] || {})[diaPtDe(d)] || [], hIni, hFim));
+                if (!conflito) disp.push(sala);
+            }
+            disp.sort((a, b) => a.NOME.localeCompare(b.NOME));
+
+            BUSCA = {evento, capacidade, dataIni, dataFim, dias: diasEvento, hIni, hFim, datas};
+            mostrarResultados(disp);
+        }
+
+        function mostrarResultados(disp) {
+            document.getElementById('resultado-salas').classList.remove('hidden');
+            const b = BUSCA;
+            let periodo = parseDataLocal(b.dataIni).toLocaleDateString('pt-BR');
+            if (b.dataFim) periodo += ' a ' + parseDataLocal(b.dataFim).toLocaleDateString('pt-BR');
+            document.getElementById('info-evento').innerHTML =
+                `<b>📌 Evento:</b> ${esc(b.evento)} | <b>👥 Participantes:</b> ${b.capacidade}<br>` +
+                `<b>📅 Período:</b> ${periodo} | <b>📆 Dias:</b> ${esc(b.dias.join(', '))}<br>` +
+                `<b>⏰ Horário:</b> ${b.hIni} - ${b.hFim}`;
+
+            const cont = document.getElementById('salas-container');
+            if (!disp.length) {
+                cont.innerHTML = `<div class="alert warning">⚠️ <b>Nenhuma sala disponível</b> para os critérios informados. Tente ajustar a capacidade, horário ou período.</div>`;
+                return;
+            }
+            cont.innerHTML = `<div class="alert success" style="grid-column:1/-1">✅ <b>${disp.length} sala(s) disponível(is)</b></div>` +
+                disp.map(s => {
+                    const rec = [];
+                    if (s.PROJETOR) rec.push('🎥 Projetor');
+                    if (s.AR) rec.push('❄️ Ar-cond.');
+                    if (s.ACESSIBILIDADE) rec.push('♿ Acessível');
+                    return `<div class="sala-item">
+                        <h4>📍 ${esc(s.NOME)}</h4>
+                        <p>${esc(s.TIPO)} · ${esc(s.ANDAR)}<br>👥 ${s.CAPACIDADE} lugares<br>${rec.join(' · ') || 'Sem recursos extras'}</p>
+                        <span class="badge badge-success">✅ Disponível</span><br><br>
+                        <button class="btn-success" data-sala="${esc(s.NOME)}">📨 Solicitar ${esc(s.NOME)}</button>
+                    </div>`;
+                }).join('');
+            cont.scrollIntoView({behavior: 'smooth'});
+        }
+
+        // ==================================================================
+        // 7) ENVIAR SOLICITAÇÃO / ACOMPANHAR
+        // ==================================================================
+        async function solicitarSala(nomeSala, btn) {
+            if (!USUARIO || !BUSCA) return;
+            if (btn) btn.disabled = true;
+            try {
+                await db.collection('solicitacoes').add({
+                    uid: USUARIO.uid, nome: USUARIO.nome, email: USUARIO.email,
+                    evento: BUSCA.evento, sala: nomeSala, capacidade: BUSCA.capacidade,
+                    data_ini: BUSCA.dataIni, data_fim: BUSCA.dataFim || BUSCA.dataIni,
+                    dias: BUSCA.dias, h_ini: BUSCA.hIni, h_fim: BUSCA.hFim,
+                    status: 'PENDENTE',
+                    criado_em: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showAlert(`✅ Solicitação da sala <b>${esc(nomeSala)}</b> enviada! ` +
+                          `Acompanhe o status em '📋 Acompanhar Solicitações'.`, 'success');
+                document.getElementById('resultado-salas').classList.add('hidden');
+                BUSCA = null;
+            } catch (e) {
+                if (btn) btn.disabled = false;
+                showAlert('❌ Erro ao enviar solicitação: ' + esc(e.message), 'error');
+            }
+        }
+
+        const BADGE = {PENDENTE: '<span class="badge badge-warning">🟡 PENDENTE</span>',
+                       APROVADA: '<span class="badge badge-success">🟢 APROVADA</span>',
+                       RECUSADA: '<span class="badge badge-danger">🔴 RECUSADA</span>'};
+        const fmtISO = s => s ? parseDataLocal(s).toLocaleDateString('pt-BR') : '';
+
+        // Listener em tempo real: o status muda na tela assim que o admin aprova/recusa.
+        function iniciarMinhasSolicitacoes() {
+            if (!USUARIO) return;
+            if (unsubMinhas) unsubMinhas();
+            const cont = document.getElementById('lista-minhas');
+            unsubMinhas = db.collection('solicitacoes').where('uid', '==', USUARIO.uid).onSnapshot(snap => {
+                const rows = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                rows.sort((a, b) => (b.criado_em?.toMillis?.() || 0) - (a.criado_em?.toMillis?.() || 0));
+                if (!rows.length) {
+                    cont.innerHTML = '<div class="alert info">Você ainda não fez solicitações.</div>';
+                    return;
+                }
+                cont.innerHTML = rows.map(s => {
+                    const dias = Array.isArray(s.dias) ? s.dias.join(', ') : (s.dias || '');
+                    const periodo = (s.data_fim && s.data_fim !== s.data_ini)
+                        ? `${fmtISO(s.data_ini)} → ${fmtISO(s.data_fim)}` : fmtISO(s.data_ini);
+                    const cancelar = s.status === 'PENDENTE'
+                        ? `<button class="btn-danger" style="margin-top:8px;" data-cancelar="${esc(s.id)}">🗑️ Cancelar solicitação</button>` : '';
+                    return `<div class="solic-card">
+                        <b>${esc(s.evento)}</b> — Sala <b>${esc(s.sala)}</b><br>
+                        <span style="color:#5d6d7e; font-size:0.85rem;">
+                        📅 ${periodo} (${esc(dias)}) · ⏰ ${esc(s.h_ini)}–${esc(s.h_fim)} · 👥 ${esc(s.capacidade)}</span><br>
+                        ${BADGE[s.status] || esc(s.status)}<br>${cancelar}</div>`;
+                }).join('');
+            }, err => {
+                console.error(err);
+                cont.innerHTML = `<div class="alert error">Não foi possível carregar suas solicitações: ${esc(err.message)}
+                    <br><small>Se for "permission-denied", publique as regras do arquivo firestore.rules.</small></div>`;
+            });
+        }
+
+        async function cancelarSolicitacao(id) {
+            if (!confirm('Cancelar esta solicitação?')) return;
+            try { await db.collection('solicitacoes').doc(id).delete(); }
+            catch (e) { alert('Erro ao cancelar: ' + e.message); }
+        }
+
+        // ==================================================================
+        // 8) LIGAÇÃO DOS EVENTOS (sem onclick inline)
+        // ==================================================================
+        document.querySelectorAll('.sidebar-btn[data-aba]').forEach(b =>
+            b.addEventListener('click', () => mostrarAba(b.dataset.aba, b)));
+        document.getElementById('btn-logout').addEventListener('click', logout);
+        document.getElementById('btn-buscar').addEventListener('click', buscarSalas);
+        document.getElementById('usa_fim').addEventListener('change', toggleRecorrente);
+        document.getElementById('bloco_pref').addEventListener('change', popularSalas);
+        document.getElementById('salas-container').addEventListener('click', e => {
+            const b = e.target.closest('[data-sala]');
+            if (b) solicitarSala(b.dataset.sala, b);
+        });
+        document.getElementById('lista-minhas').addEventListener('click', e => {
+            const b = e.target.closest('[data-cancelar]');
+            if (b) cancelarSolicitacao(b.dataset.cancelar);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Administrador — Solicitação de Salas CT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh;
+            background: linear-gradient(180deg, #1a5276 0%, #1a3a5c 100%); color: white;
+            padding: 24px; overflow-y: auto; z-index: 100; }
+        .sidebar h2 { font-size: 1.1rem; margin-bottom: 24px; padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .sidebar-btn { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px;
+            cursor: pointer; font-size: 0.9rem; transition: all 0.3s; margin-bottom: 8px; text-align: left; }
+        .sidebar-btn:hover { background: rgba(255,255,255,0.2); }
+        .sidebar-btn.active { background: rgba(255,255,255,0.3); font-weight: 600; }
+        .main-content { margin-left: 260px; padding: 32px; max-width: 1200px; }
+        .header { margin-bottom: 32px; }
+        .header h1 { font-size: 2rem; color: #1a5276; margin-bottom: 4px; }
+        .header p { color: #5d6d7e; font-size: 1.05rem; }
+        .card { background: white; border-radius: 12px; padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; border-left: 4px solid #1a5276; }
+        .card h3 { font-size: 1.1rem; color: #1a5276; margin-bottom: 20px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; color: #374151; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 0.9rem; font-family: inherit; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #1a5276;
+            box-shadow: 0 0 0 3px rgba(26,82,118,0.1); }
+        .btn-primary { padding: 12px 32px; background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(26,82,118,0.25); }
+        .btn-success { padding: 10px 20px; background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; }
+        .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(39,174,96,0.25); }
+        .btn-danger { padding: 10px 20px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; }
+        .alert { padding: 14px 18px; border-radius: 10px; margin: 16px 0; font-size: 0.9rem; }
+        .alert.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .alert.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .alert.warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .alert.info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .info-box { background: #eaf2f8; border-radius: 10px; padding: 16px; margin: 16px 0; font-size: 0.9rem; line-height: 1.6; }
+        .sala-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .sala-item { background: #e8f6f3; border-radius: 8px; padding: 16px; border-left: 4px solid #1abc9c; }
+        .sala-item h4 { color: #1a5276; margin-bottom: 4px; }
+        .sala-item p { color: #5d6d7e; font-size: 0.85rem; margin-bottom: 8px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f8fafc; font-weight: 600; color: #374151; }
+        tr:hover { background: #f8fafc; }
+        .hidden { display: none !important; }
+        .center-btn { display: flex; justify-content: center; margin: 24px 0; }
+        .divider { height: 1px; background: #e5e7eb; margin: 24px 0; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .solic-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; background: white; }
+        .tabs-nav { display: flex; gap: 8px; margin-bottom: 24px; }
+        .tabs-nav button { flex: 0 0 auto; }
+        .spin { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(26,82,118,0.2);
+            border-radius: 50%; border-top-color: #1a5276; animation: sp 1s linear infinite; vertical-align: middle; }
+        @keyframes sp { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>🛡️ Painel Admin — Salas CT</h2>
+        <button class="sidebar-btn active" data-secao="arquivos">📥 Arquivos</button>
+        <button class="sidebar-btn" data-secao="usuarios">👥 Usuários</button>
+        <button class="sidebar-btn" data-secao="solicitacoes">📨 Solicitações <span id="badge-sol" class="badge badge-warning hidden">0</span></button>
+        <button class="sidebar-btn" data-secao="cadastros">✅ Cadastros Pendentes <span id="badge-cad" class="badge badge-warning hidden">0</span></button>
+        <button class="sidebar-btn" id="btn-logout" type="button">🚪 Sair / Logout</button>
+        <div style="margin-top: 24px; font-size: 0.8rem; opacity: 0.7;">
+            <p id="admin-info"></p>
+            <p>Perfil: <strong>Administrador</strong></p>
+            <p id="current-date"></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🛡️ Painel do Administrador</h1>
+            <p>Gerencie arquivos, usuários, solicitações e cadastros</p>
+        </div>
+
+        <!-- ===================== (i) ARQUIVOS ===================== -->
+        <div id="sec-arquivos" class="secao">
+            <div class="card">
+                <h3>📥 Arquivos do sistema (sempre atualizados)</h3>
+                <p style="color:#5d6d7e; font-size:0.9rem; margin-bottom:16px;">
+                    Estes são os arquivos oficiais hospedados neste repositório. Substitua-os no GitHub para atualizar.
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <a class="btn-primary" style="display:block; text-align:center; text-decoration:none;"
+                           href="1%20SALAS%20-%202026_2.xlsx" download>📥 Baixar Excel de SALAS (.xlsx)</a>
+                    </div>
+                    <div class="form-group">
+                        <a class="btn-primary" style="display:block; text-align:center; text-decoration:none;"
+                           href="1%20mapa%20salas%202026-2%20-%20E.xlsm" download>📥 Baixar MAPA DE SALAS (.xlsm)</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>📤 Exportar dados do Firebase (solicitações + usuários)</h3>
+                <button class="btn-primary" id="btn-exportar" type="button">Gerar e baixar CSV</button>
+                <div id="alert-arq" style="margin-top:12px;"></div>
+            </div>
+        </div>
+
+        <!-- ===================== (iii) USUÁRIOS ===================== -->
+        <div id="sec-usuarios" class="secao hidden">
+            <div class="card">
+                <h3>👥 Usuários cadastrados / acesso ao site</h3>
+                <div id="lista-usuarios"><p><span class="spin"></span> Carregando...</p></div>
+            </div>
+        </div>
+
+        <!-- ===================== (iv) SOLICITAÇÕES ===================== -->
+        <div id="sec-solicitacoes" class="secao hidden">
+            <div class="card">
+                <h3>📨 Solicitações de salas</h3>
+                <div class="form-group" style="max-width:260px;">
+                    <label>Filtrar por status:</label>
+                    <select id="filtro-sol">
+                        <option value="TODAS">TODAS</option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="APROVADA">APROVADA</option>
+                        <option value="RECUSADA">RECUSADA</option>
+                    </select>
+                </div>
+                <div id="alert-sol"></div>
+                <div id="lista-solicitacoes"><p><span class="spin"></span> Carregando...</p></div>
+            </div>
+        </div>
+
+        <!-- ===================== (v) CADASTROS PENDENTES ===================== -->
+        <div id="sec-cadastros" class="secao hidden">
+            <div class="card">
+                <h3>✅ Cadastros aguardando aprovação</h3>
+                <div id="alert-cad"></div>
+                <div id="lista-cadastros"><p><span class="spin"></span> Carregando...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        // ==================================================================
+        // 1) CONFIG DO FIREBASE (a mesma do index.html)
+        //    CORREÇÃO: no arquivo original estavam os valores de exemplo
+        //    ("COLE_SUA_API_KEY"...), então o admin.html nunca enxergava a sessão
+        //    do login e redirecionava de volta ao index em loop.
+        // ==================================================================
+        firebase.initializeApp(window.firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Garantia: se o firebase-config.js publicado for uma versão antiga (sem verificarAdmin)
+        // ou estiver em cache, a página usa esta cópia e continua funcionando.
+        if (typeof window.verificarAdmin !== 'function') {
+            window.verificarAdmin = async function (db, user) {
+                const email = (user.email || '').trim().toLowerCase();
+                try {
+                    const cfg = await db.collection('config').doc('admins').get();
+                    if (cfg.exists) {
+                        const d = cfg.data();
+                        const lista = [].concat(d.emails || [], d.email || []).map(e => String(e).trim().toLowerCase());
+                        if (lista.includes(email)) return true;
+                    }
+                } catch (e) { console.warn('config/admins:', e.message); }
+                const u = await db.collection('usuarios').doc(user.uid).get();
+                return u.exists && u.data().perfil === 'admin' && u.data().status === 'aprovado';
+            };
+        }
+
+        const BADGE = {PENDENTE: '<span class="badge badge-warning">🟡 PENDENTE</span>',
+                       APROVADA: '<span class="badge badge-success">🟢 APROVADA</span>',
+                       RECUSADA: '<span class="badge badge-danger">🔴 RECUSADA</span>'};
+        const BADGE_USR = {aprovado: '<span class="badge badge-success">aprovado</span>',
+                           pendente: '<span class="badge badge-warning">pendente</span>',
+                           rejeitado: '<span class="badge badge-danger">rejeitado</span>'};
+        let saindo = false;
+
+        document.getElementById('current-date').textContent =
+            new Date().toLocaleDateString('pt-BR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c =>
+                ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function fmtData(ts) { return (ts && ts.toDate) ? ts.toDate().toLocaleString('pt-BR') : '—'; }
+        function fmtISO(s) { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; }
+        function alertEm(id, msg, tipo) {
+            document.getElementById(id).innerHTML = `<div class="alert ${tipo}">${msg}</div>`;
+        }
+        function mostrarBloqueio(msg) {
+            document.querySelector('.main-content').innerHTML =
+                `<div class="card"><h3>Acesso ao painel</h3><div class="alert error">${msg}</div>
+                 <button class="btn-primary" id="btn-voltar" type="button">Voltar ao login</button></div>`;
+            document.getElementById('btn-voltar').addEventListener('click', logout);
+        }
+
+        // ---------- GUARD DE AUTENTICAÇÃO ----------
+        auth.onAuthStateChanged(async (user) => {
+            if (saindo) return;
+            if (!user) { window.location.replace('index.html'); return; }
+            let ehAdmin;
+            try {
+                ehAdmin = await window.verificarAdmin(db, user);
+            } catch (e) {
+                // NÃO redireciona (isso gerava loop): mostra o motivo real
+                console.error(e);
+                mostrarBloqueio('Não foi possível verificar suas permissões: ' + esc(e.message) +
+                    '<br><small>Confira as regras do Firestore (arquivo firestore.rules).</small>');
+                return;
+            }
+            if (!ehAdmin) {
+                window.location.replace('index.html');   // não é admin: o index o leva ao painel de estudante
+                return;
+            }
+            document.getElementById('admin-info').textContent = user.email;
+            carregarUsuarios(); carregarSolicitacoes(); carregarCadastros();
+        });
+
+        async function logout() {
+            saindo = true;
+            try { await auth.signOut(); } catch (e) { console.error('signOut:', e); }
+            window.location.replace('index.html');
+        }
+
+        function mostrarSecao(nome) {
+            document.querySelectorAll('.secao').forEach(s => s.classList.add('hidden'));
+            document.getElementById('sec-' + nome).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-btn[data-secao]').forEach(b =>
+                b.classList.toggle('active', b.dataset.secao === nome));
+        }
+
+        // ---------- (iii) USUÁRIOS ----------
+        async function carregarUsuarios() {
+            try {
+                const snap = await db.collection('usuarios').get();
+                const rows = snap.docs.map(d => ({uid: d.id, ...d.data()}))
+                                  .sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+                if (!rows.length) { document.getElementById('lista-usuarios').innerHTML =
+                    '<div class="alert info">Nenhum usuário cadastrado ainda.</div>'; return; }
+                document.getElementById('lista-usuarios').innerHTML = `
+                    <div class="table-container"><table>
+                        <thead><tr><th>NOME</th><th>E-MAIL</th><th>STATUS</th><th>ÚLTIMO ACESSO</th><th>CRIADO EM</th><th>AÇÃO</th></tr></thead>
+                        <tbody>${rows.map(u => `<tr>
+                            <td>${esc(u.nome) || '—'}</td><td>${esc(u.email) || '—'}</td>
+                            <td>${BADGE_USR[u.status] || esc(u.status) || '—'}</td>
+                            <td>${fmtData(u.ultimo_acesso)}</td><td>${fmtData(u.criado_em)}</td>
+                            <td>${u.status === 'aprovado'
+                                ? `<button class="btn-danger" data-cad="${esc(u.uid)}" data-st="rejeitado">Bloquear</button>`
+                                : `<button class="btn-success" data-cad="${esc(u.uid)}" data-st="aprovado">Aprovar</button>`}</td>
+                        </tr>`).join('')}</tbody></table></div>`;
+            } catch (e) { alertEm('lista-usuarios', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        // ---------- (iv) SOLICITAÇÕES ----------
+        async function carregarSolicitacoes() {
+            try {
+                const filtro = document.getElementById('filtro-sol').value;
+                const snap = await db.collection('solicitacoes').get();
+                const todas = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                todas.sort((a, b) => (b.criado_em?.toMillis?.() || 0) - (a.criado_em?.toMillis?.() || 0));
+                const pendentes = todas.filter(r => r.status === 'PENDENTE').length;
+                const b = document.getElementById('badge-sol');
+                b.textContent = pendentes; b.classList.toggle('hidden', pendentes === 0);
+                const rows = filtro === 'TODAS' ? todas : todas.filter(r => r.status === filtro);
+                if (!rows.length) { document.getElementById('lista-solicitacoes').innerHTML =
+                    '<div class="alert info">Nenhuma solicitação encontrada.</div>'; return; }
+                document.getElementById('lista-solicitacoes').innerHTML = rows.map(s => {
+                    const dias = Array.isArray(s.dias) ? s.dias.join(', ') : (s.dias || '');
+                    const periodo = (s.data_fim && s.data_fim !== s.data_ini)
+                        ? `${fmtISO(s.data_ini)} → ${fmtISO(s.data_fim)}` : fmtISO(s.data_ini);
+                    let botoes = '';
+                    if (s.status === 'PENDENTE') {
+                        botoes = `<button class="btn-success" data-sol="${esc(s.id)}" data-st="APROVADA">✅ Aprovar</button>
+                                  <button class="btn-danger" style="margin-left:8px;" data-sol="${esc(s.id)}" data-st="RECUSADA">❌ Recusar</button>`;
+                    } else if (s.status === 'APROVADA') {
+                        botoes = `<button class="btn-danger" data-sol="${esc(s.id)}" data-st="RECUSADA">🚫 Cancelar aprovação</button>`;
+                    } else if (s.status === 'RECUSADA') {
+                        botoes = `<button class="btn-success" data-sol="${esc(s.id)}" data-st="APROVADA">↩️ Aprovar mesmo assim</button>`;
+                    }
+                    return `<div class="solic-card">
+                        <b>${esc(s.evento)}</b> · ${esc(s.nome)} (${esc(s.email)})<br>
+                        <span style="color:#5d6d7e; font-size:0.85rem;">
+                        Sala <b>${esc(s.sala)}</b> · 📅 ${periodo} (${esc(dias)}) · ⏰ ${esc(s.h_ini)}–${esc(s.h_fim)} · 👥 ${esc(s.capacidade || '?')}</span><br>
+                        ${BADGE[s.status] || esc(s.status)} <span style="margin-left:12px;">${botoes}</span></div>`;
+                }).join('');
+            } catch (e) { alertEm('lista-solicitacoes', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        // Datas (YYYY-MM-DD) em que uma solicitação realmente ocupa a sala
+        const DIA_IDX = {'DOMINGO':0,'SEGUNDA':1,'TERÇA':2,'QUARTA':3,'QUINTA':4,'SEXTA':5,'SÁBADO':6};
+        function datasOcupadas(s) {
+            const out = new Set();
+            const [y1, m1, d1] = s.data_ini.split('-').map(Number);
+            const [y2, m2, d2] = (s.data_fim || s.data_ini).split('-').map(Number);
+            const dias = (Array.isArray(s.dias) ? s.dias : String(s.dias || '').split(','))
+                .map(t => DIA_IDX[t.trim().toUpperCase()]);
+            for (let d = new Date(y1, m1 - 1, d1); d <= new Date(y2, m2 - 1, d2); d.setDate(d.getDate() + 1)) {
+                if (dias.includes(d.getDay())) out.add(d.toDateString());
+            }
+            return out;
+        }
+        const toMin = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + b; };
+
+        async function acharConflito(sol) {
+            const snap = await db.collection('solicitacoes').where('status', '==', 'APROVADA').get();
+            const minhas = datasOcupadas(sol);
+            return snap.docs.map(d => ({id: d.id, ...d.data()})).find(o => {
+                if (o.id === sol.id || o.sala !== sol.sala) return false;
+                if (!(Math.max(toMin(sol.h_ini), toMin(o.h_ini)) < Math.min(toMin(sol.h_fim), toMin(o.h_fim)))) return false;
+                return [...datasOcupadas(o)].some(x => minhas.has(x));
+            });
+        }
+
+        async function atualizarSol(id, status) {
+            try {
+                if (status === 'APROVADA') {
+                    const doc = await db.collection('solicitacoes').doc(id).get();
+                    const conf = await acharConflito({id, ...doc.data()});
+                    if (conf && !confirm(`Atenção: a sala ${conf.sala} já tem a solicitação aprovada "${conf.evento}" ` +
+                                         `(${conf.h_ini}–${conf.h_fim}) em datas coincidentes.\n\nAprovar mesmo assim?`)) return;
+                }
+                await db.collection('solicitacoes').doc(id).update({status});
+                alertEm('alert-sol', `✅ Status atualizado para ${status}.`, 'success');
+                carregarSolicitacoes();
+            } catch (e) { alertEm('alert-sol', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        // ---------- (v) CADASTROS PENDENTES ----------
+        async function carregarCadastros() {
+            try {
+                const snap = await db.collection('usuarios').where('status', '==', 'pendente').get();
+                const rows = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+                const b = document.getElementById('badge-cad');
+                b.textContent = rows.length; b.classList.toggle('hidden', rows.length === 0);
+                if (!rows.length) { document.getElementById('lista-cadastros').innerHTML =
+                    '<div class="alert success">Nenhum cadastro pendente. 🎉</div>'; return; }
+                document.getElementById('lista-cadastros').innerHTML = rows.map(u => `
+                    <div class="solic-card"><b>${esc(u.nome)}</b> — ${esc(u.email)}<br>
+                    <span style="color:#5d6d7e; font-size:0.85rem;">Cadastrado em: ${fmtData(u.criado_em)}</span><br>
+                    <button class="btn-success" style="margin-top:8px;" data-cad="${esc(u.uid)}" data-st="aprovado">✅ Aprovar cadastro</button>
+                    <button class="btn-danger" style="margin-left:8px; margin-top:8px;" data-cad="${esc(u.uid)}" data-st="rejeitado">❌ Rejeitar</button></div>`).join('');
+            } catch (e) { alertEm('lista-cadastros', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        async function atualizarCad(uid, status) {
+            try {
+                await db.collection('usuarios').doc(uid).update({status});
+                alertEm('alert-cad', `✅ Usuário ${status}.`, 'success');
+                carregarCadastros(); carregarUsuarios();
+            } catch (e) { alertEm('alert-cad', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        // ---------- EXPORTAÇÃO CSV ----------
+        function baixarCSV(nome, linhas) {
+            const csv = '\ufeff' + linhas.map(l => l.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = nome;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        }
+
+        async function exportarDados() {
+            try {
+                const [ss, us] = await Promise.all([db.collection('solicitacoes').get(), db.collection('usuarios').get()]);
+                const sols = ss.docs.map(d => d.data());
+                const users = us.docs.map(d => d.data());
+                baixarCSV('solicitacoes.csv',
+                    [['evento','nome','email','sala','capacidade','data_ini','data_fim','dias','h_ini','h_fim','status'],
+                     ...sols.map(s => [s.evento, s.nome, s.email, s.sala, s.capacidade, s.data_ini, s.data_fim,
+                                       Array.isArray(s.dias) ? s.dias.join(',') : s.dias, s.h_ini, s.h_fim, s.status])]);
+                // segundo download espaçado: navegadores costumam bloquear dois downloads simultâneos
+                setTimeout(() => baixarCSV('usuarios.csv',
+                    [['nome','email','status','ultimo_acesso','criado_em'],
+                     ...users.map(u => [u.nome, u.email, u.status, fmtData(u.ultimo_acesso), fmtData(u.criado_em)])]), 600);
+                alertEm('alert-arq', '✅ Arquivos CSV gerados.', 'success');
+            } catch (e) { alertEm('alert-arq', 'Erro: ' + esc(e.message), 'error'); }
+        }
+
+        // ---------- LIGAÇÃO DOS EVENTOS (sem onclick inline) ----------
+        document.querySelectorAll('.sidebar-btn[data-secao]').forEach(b =>
+            b.addEventListener('click', () => mostrarSecao(b.dataset.secao)));
+        document.getElementById('btn-logout').addEventListener('click', logout);
+        document.getElementById('btn-exportar').addEventListener('click', exportarDados);
+        document.getElementById('filtro-sol').addEventListener('change', carregarSolicitacoes);
+        document.getElementById('lista-solicitacoes').addEventListener('click', e => {
+            const b = e.target.closest('[data-sol]'); if (b) atualizarSol(b.dataset.sol, b.dataset.st);
+        });
+        ['lista-cadastros', 'lista-usuarios'].forEach(id =>
+            document.getElementById(id).addEventListener('click', e => {
+                const b = e.target.closest('[data-cad]'); if (b) atualizarCad(b.dataset.cad, b.dataset.st);
+            }));
+    </script>
+</body>
+</html>
