@@ -34,7 +34,6 @@
         .alert.warning { display: block; background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
         .hidden { display: none !important; }
     </style>
-<base target="_blank">
 </head>
 <body>
     <div class="login-container">
@@ -44,8 +43,8 @@
         </div>
 
         <div class="profile-selector">
-            <button class="profile-option active" data-profile="login" onclick="selectTab('login')">🔑 Entrar</button>
-            <button class="profile-option" data-profile="cadastro" onclick="selectTab('cadastro')">📝 Cadastrar</button>
+            <button class="profile-option active" data-profile="login" type="button">🔑 Entrar</button>
+            <button class="profile-option" data-profile="cadastro" type="button">📝 Cadastrar</button>
         </div>
 
         <div id="form-login">
@@ -57,7 +56,7 @@
                 <label for="login_senha">Senha:</label>
                 <input type="password" id="login_senha" placeholder="••••••••">
             </div>
-            <button class="btn-primary" onclick="fazerLogin()">Entrar</button>
+            <button class="btn-primary" id="btn-login" type="button">Entrar</button>
         </div>
 
         <div id="form-cadastro" class="hidden">
@@ -73,7 +72,7 @@
                 <label for="cad_senha">Senha (mín. 6 caracteres):</label>
                 <input type="password" id="cad_senha" placeholder="••••••••">
             </div>
-            <button class="btn-primary" onclick="fazerCadastro()">Cadastrar</button>
+            <button class="btn-primary" id="btn-cadastro" type="button">Cadastrar</button>
             <p style="font-size:0.8rem; color:#6b7280; margin-top:10px;">
                 ⚠️ Após o cadastro, sua conta ficará <b>pendente de aprovação</b> do administrador.
             </p>
@@ -85,28 +84,37 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
 
     <script>
-        // ==================================================================
-        // 1) COLE AQUI A CONFIG DO SEU PROJETO FIREBASE
-        //    (Firebase Console -> Configurações do projeto -> Seus apps -> Web)
-        // ==================================================================
-        const firebaseConfig = {
-              apiKey: "AIzaSyADL_CixdmBy6oNrAg6YMjyiFYXp73YGvY",
-              authDomain: "solicitacao-salas-ct-c652d.firebaseapp.com",
-              projectId: "solicitacao-salas-ct-c652d",
-              storageBucket: "solicitacao-salas-ct-c652d.firebasestorage.app",
-              messagingSenderId: "802787248552",
-              appId: "1:802787248552:web:dc50cdaa806e2d637ab59d"
-            };
-        firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(window.firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // CORREÇÃO: createUserWithEmailAndPassword já dispara onAuthStateChanged ANTES do documento
+        // em /usuarios ser gravado. Sem esta trava, o listener achava que o usuário "não existia",
+        // fazia signOut() no meio do cadastro e a gravação do perfil podia falhar.
+        let cadastrando = false;
 
         function showAlert(msg, tipo) {
             const a = document.getElementById('alert');
             a.textContent = msg;
             a.className = 'alert ' + tipo;
+        }
+
+        function msgErro(e) {
+            const m = {
+                'auth/invalid-credential': 'E-mail ou senha incorretos.',
+                'auth/wrong-password': 'E-mail ou senha incorretos.',
+                'auth/user-not-found': 'E-mail ou senha incorretos.',
+                'auth/invalid-email': 'E-mail inválido.',
+                'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+                'auth/weak-password': 'Senha fraca (mínimo 6 caracteres).',
+                'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+                'auth/network-request-failed': 'Falha de rede. Verifique sua conexão.',
+                'permission-denied': 'Permissão negada pelo Firestore (verifique as regras do banco).'
+            };
+            return m[e.code] || e.message;
         }
 
         function selectTab(tab) {
@@ -121,11 +129,12 @@
         async function fazerLogin() {
             const email = document.getElementById('login_email').value.trim();
             const senha = document.getElementById('login_senha').value;
+            if (!email || !senha) { showAlert('Informe e-mail e senha.', 'error'); return; }
             try {
                 await auth.signInWithEmailAndPassword(email, senha);
-                // onAuthStateChanged abaixo cuida do redirecionamento
+                // onAuthStateChanged cuida do redirecionamento
             } catch (e) {
-                showAlert('❌ Falha no login: ' + e.message, 'error');
+                showAlert('❌ Falha no login: ' + msgErro(e), 'error');
             }
         }
 
@@ -136,6 +145,7 @@
             const senha = document.getElementById('cad_senha').value;
             if (!nome || !email.includes('@')) { showAlert('Preencha nome e e-mail válidos.', 'error'); return; }
             if (senha.length < 6) { showAlert('A senha deve ter pelo menos 6 caracteres.', 'error'); return; }
+            cadastrando = true;
             try {
                 const cred = await auth.createUserWithEmailAndPassword(email, senha);
                 await db.collection('usuarios').doc(cred.user.uid).set({
@@ -145,21 +155,25 @@
                     ultimo_acesso: null
                 });
                 await auth.signOut(); // só entra depois da aprovação
-                showAlert('✅ Cadastro realizado! Aguarde a aprovação do administrador para entrar.', 'success');
                 selectTab('login');
+                showAlert('✅ Cadastro realizado! Aguarde a aprovação do administrador para entrar.', 'success');
             } catch (e) {
-                showAlert('❌ Falha no cadastro: ' + e.message, 'error');
+                showAlert('❌ Falha no cadastro: ' + msgErro(e), 'error');
+                // se criou a conta mas falhou ao gravar o perfil, não deixa sessão "órfã" aberta
+                if (auth.currentUser) { try { await auth.signOut(); } catch (_) {} }
+            } finally {
+                cadastrando = false;
             }
         }
 
         // ---------- SESSÃO / REDIRECIONAMENTO ----------
         auth.onAuthStateChanged(async (user) => {
-            if (!user) return;
+            if (!user || cadastrando) return;
             try {
                 // Admin? (lista de e-mails no documento config/admins — editável só pelo console)
                 const cfg = await db.collection('config').doc('admins').get();
-                const admins = (cfg.exists && cfg.data().emails) || [];
-                if (admins.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
+                const admins = ((cfg.exists && cfg.data().emails) || []).map(e => String(e).toLowerCase());
+                if (admins.includes((user.email || '').toLowerCase())) {
                     window.location.replace('admin.html');
                     return;
                 }
@@ -174,9 +188,20 @@
                 if (st === 'pendente') showAlert('⏳ Cadastro aguardando aprovação do administrador.', 'warning');
                 else showAlert('❌ Cadastro não aprovado. Procure a secretaria do CT.', 'error');
             } catch (e) {
-                showAlert('Erro: ' + e.message, 'error');
+                showAlert('Erro ao validar acesso: ' + msgErro(e), 'error');
+                try { await auth.signOut(); } catch (_) {}
             }
         });
+
+        // ---------- EVENTOS ----------
+        document.querySelectorAll('.profile-option').forEach(b =>
+            b.addEventListener('click', () => selectTab(b.dataset.profile)));
+        document.getElementById('btn-login').addEventListener('click', fazerLogin);
+        document.getElementById('btn-cadastro').addEventListener('click', fazerCadastro);
+        ['login_email', 'login_senha'].forEach(id => document.getElementById(id)
+            .addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); }));
+        ['cad_nome', 'cad_email', 'cad_senha'].forEach(id => document.getElementById(id)
+            .addEventListener('keydown', e => { if (e.key === 'Enter') fazerCadastro(); }));
     </script>
 </body>
 </html>
